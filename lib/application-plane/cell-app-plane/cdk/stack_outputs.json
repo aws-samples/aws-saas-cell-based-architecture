@@ -1,0 +1,23 @@
+{
+  "Cell-o2345v9": {
+    "CellECSClusterName": "Cell-o2345v9-CellClustero2345v9A1E31353-QIHxfCN9Q88b",
+    "CellApio2345v9EndpointE06480C4": "https://9y7vhck0df.execute-api.us-east-1.amazonaws.com/prod/",
+    "CellApiUrl": "https://9y7vhck0df.execute-api.us-east-1.amazonaws.com/prod/",
+    "CellAsgName": "Cell-o2345v9-DefaultAutoScalingGroupo2345v9ASG8640160A-g7RbuZS7lfjM",
+    "CellDBServero2345v9RDSClusterHosto2345v919733F78": "cell-o2345v9-celldbservero2345v9auroradatabasecf78-ednpfnutdtze.cluster-cp7x8dhmn2in.us-east-1.rds.amazonaws.com",
+    "CellDBServero2345v9RDSSecretNameo2345v94A605F13": "arn:aws:secretsmanager:us-east-1:467127217900:secret:CellDB-o2345v9AuroraClusterCredentials-o2345v9-wYvwBE",
+    "CellAppClientId": "2vu7p3dqstc2pk9n6h6dkptdv8",
+    "CellDBServero2345v9RDSSecretArno2345v92908C778": "arn:aws:secretsmanager:us-east-1:467127217900:secret:CellDB-o2345v9AuroraClusterCredentials-o2345v9-wYvwBE",
+    "CellDBServero2345v9RDSInstanceIdentifierso2345v9960D451B": "cell-o2345v9-celldbservero2345v9auroradatabasewrit-g9wfurzcn2yd",
+    "CellALBSecurityGroupId": "sg-00edb70374af7386f",
+    "CellTotalTenantsSupported": "10",
+    "CellListenerArn": "arn:aws:elasticloadbalancing:us-east-1:467127217900:listener/app/Cell-o-CellA-Vn1Ul0zw16SJ/0ed7fcdc956f290a/d434713661b771e0",
+    "CellALBArn": "arn:aws:elasticloadbalancing:us-east-1:467127217900:loadbalancer/app/Cell-o-CellA-Vn1Ul0zw16SJ/0ed7fcdc956f290a",
+    "CellDBServero2345v9RDSClusterPorto2345v92803568C": "5432",
+    "CellDBServero2345v9TenantRDSInitializero2345v9TenantRDSInitializerLambdaNameo2345v948DC0E24": "Cell-o2345v9-CellDBServero2345v9TenantRDSInitializ-fqf0hguOVZKD",
+    "CellDBServero2345v9RDSClusterEndpointo2345v9E7B8ED51": "cell-o2345v9-celldbservero2345v9auroradatabasecf78-ednpfnutdtze.cluster-cp7x8dhmn2in.us-east-1.rds.amazonaws.com:5432",
+    "CellDBServero2345v9RDSEndpointso2345v979578B4C": "cell-o2345v9-celldbservero2345v9auroradatabasewrit-g9wfurzcn2yd.cp7x8dhmn2in.us-east-1.rds.amazonaws.com",
+    "CellVpcId": "vpc-03cad91c6d6640eec",
+    "CellUserPoolId": "us-east-1_mVpkTh1eZ"
+  }
+}

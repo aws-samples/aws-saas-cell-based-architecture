@@ -1,0 +1,303 @@
+{
+  "StartAt": "Assign total waves",
+  "States": {
+    "Assign total waves": {
+      "Type": "Pass",
+      "Next": "Iterator",
+      "Result": {
+        "total_waves": "1",
+        "index": 0,
+        "step": 1
+      },
+      "ResultPath": "$.iterator"
+    },
+    "Iterator": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload.$": "$",
+        "FunctionName": "${ITERATOR_LAMBDA_ARN}:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Map State"
+    },
+    "Map State": {
+      "Type": "Map",
+      "Iterator": {
+        "StartAt": "Instance in current wave?",
+        "States": {
+          "Instance in current wave?": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.stack.waveNumber",
+                "NumericEqualsPath": "$.current_wave_number",
+                "Next": "CellStackExists?"
+              }
+            ],
+            "Default": "Skip Deployment"
+          },
+          "CellStackExists?": {
+            "Type": "Task",
+            "Next": "Can we update Stack?",
+            "Parameters": {
+              "StackName.$": "$.stack.cellStackName"
+            },
+            "Resource": "arn:aws:states:::aws-sdk:cloudformation:describeStacks",
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.TaskFailed"
+                ],
+                "Next": "DeployCellCDK",
+                "ResultPath": "$.TaskResult"
+              }
+            ],
+            "ResultPath": "$.TaskResult"
+          },
+          "Can we update Stack?": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Or": [
+                  {
+                    "Variable": "$.TaskResult.Stacks[0].StackStatus",
+                    "StringEquals": "CREATE_COMPLETE"
+                  },
+                  {
+                    "Variable": "$.TaskResult.Stacks[0].StackStatus",
+                    "StringEquals": "ROLLBACK_COMPLETE"
+                  },
+                  {
+                    "Variable": "$.TaskResult.Stacks[0].StackStatus",
+                    "StringEquals": "UPDATE_COMPLETE"
+                  },
+                  {
+                    "Variable": "$.TaskResult.Stacks[0].StackStatus",
+                    "StringEquals": "UPDATE_ROLLBACK_COMPLETE"
+                  }
+                ],
+                "Next": "DeployCellCDK"
+              }
+            ],
+            "Default": "Skip Deployment"
+          },
+          "DeployCellCDK": {
+            "Type": "Task",
+            "Next": "Get Deployment Status",
+            "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+            "Parameters": {
+              "ProjectName": "${CODE_BUILD_PROJECT_NAME}",
+              "EnvironmentVariablesOverride": [
+                {
+                  "Name": "STACK_NAME",
+                  "Value.$": "$.stack.cellStackName"
+                },
+                {
+                  "Name": "CELL_ID",
+                  "Value.$": "$.stack.cellId"
+                },
+                {
+                  "Name": "CELL_SIZE",
+                  "Value.$": "$.stack.cellSize"
+                },
+                {
+                  "Name": "CODE_COMMIT_ID",
+                  "Value.$": "$.stack.commitId"
+                }
+              ]
+            },
+            "ResultPath": null
+          },
+          "Skip Deployment": {
+            "Type": "Pass",
+            "End": true
+          },
+          "Get Deployment Status": {
+            "Type": "Task",
+            "Next": "Deployment Complete?",
+            "Parameters": {
+              "StackName.$": "$.stack.cellStackName"
+            },
+            "Resource": "arn:aws:states:::aws-sdk:cloudformation:describeStacks",
+            "ResultPath": "$.TaskResult"
+          },
+          "Deployment Complete?": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Or": [
+                  {
+                    "Variable": "$.TaskResult.Stacks[0].StackStatus",
+                    "StringEquals": "UPDATE_COMPLETE"
+                  },
+                  {
+                    "Variable": "$.TaskResult.Stacks[0].StackStatus",
+                    "StringEquals": "CREATE_COMPLETE"
+                  }
+                ],
+                "Next": "Update CellStack with Latest commitid"
+              }
+            ],
+            "Default": "Deployment Failed"
+          },
+          "Update CellStack with Latest commitid": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::dynamodb:updateItem",
+            "Parameters": {
+              "TableName": "${CELL_MANAGEMENT_TABLE_NAME}",
+              "Key": {
+                "PK": {
+                  "S.$": "$.stack.cellId"
+                }
+              },
+              "UpdateExpression": "set codeCommitId=:codeCommitId",
+              "ExpressionAttributeValues": {
+                ":codeCommitId": {
+                  "S.$": "$.stack.commitId"
+                }
+              }
+            },
+            "Next": "Map",
+            "ResultPath": null
+          },
+          "Map": {
+            "Type": "Map",
+            "ItemProcessor": {
+              "ProcessorConfig": {
+                "Mode": "INLINE"
+              },
+              "StartAt": "DeployTenantCDK",
+              "States": {
+                "DeployTenantCDK": {
+                  "Type": "Task",
+                  "Next": "Update TenantStack with Latest ProductImage",
+                  "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+                  "Parameters": {
+                    "ProjectName": "${TENANT_MGMT_CODE_BUILD_PROJECT_NAME}",
+                    "EnvironmentVariablesOverride": [
+                      {
+                        "Name": "TENANT_ID",
+                        "Value.$": "$.tenantStack.tenantId"
+                      },
+                      {
+                        "Name": "CELL_ID",
+                        "Value.$": "$.tenantStack.cellId"
+                      },                      
+                      {
+                        "Name": "TENANT_EMAIL",
+                        "Value.$": "$.tenantStack.tenantEmail"
+                      },
+                      {
+                        "Name": "TENANT_LISTENER_PRIORITY",
+                        "Value.$": "$.tenantStack.tenantListenerPriority"
+                      },
+                      {
+                        "Name": "PRODUCT_IMAGE_VERSION",
+                        "Value.$": "$.tenantStack.productImageVersion"
+                      }
+                    ]
+                  },
+                  "ResultPath": null
+                },
+                "Update TenantStack with Latest ProductImage": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::dynamodb:updateItem",
+                  "Parameters": {
+                    "TableName": "${CELL_MANAGEMENT_TABLE_NAME}",
+                    "Key": {
+                      "PK": {
+                        "S.$": "$.tenantStack.PK"
+                      }
+                    },
+                    "UpdateExpression": "set product_image_version=:product_image_version",
+                    "ExpressionAttributeValues": {
+                      ":product_image_version": {
+                        "S.$": "$.tenantStack.productImageVersion"
+                      }
+                    }
+                  },
+                  "End": true
+                }
+              }
+            },
+            "Next": "Deployment Succeeded",
+            "ItemsPath": "$.stack.tenantsInCell",
+            "ItemSelector": {
+              "tenantStack.$": "$$.Map.Item.Value"
+            }
+          },
+          "Deployment Succeeded": {
+            "Comment": "Placeholder for a state which handles the success.",
+            "Type": "Pass",
+            "End": true
+          },
+          "Deployment Failed": {
+            "Type": "Fail",
+            "Error": "Instance deployment failed"
+          }
+        }
+      },
+      "ItemsPath": "$.stacks",
+      "ResultPath": null,
+      "ItemSelector": {
+        "stack.$": "$$.Map.Item.Value",
+        "current_wave_number.$": "$.iterator.index"
+      },
+      "Next": "All Waves Deployed?"
+    },
+    "All Waves Deployed?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.iterator.continue",
+          "BooleanEquals": true,
+          "Next": "Wait for next wave approval"
+        }
+      ],
+      "Default": "Deployment Complete"
+    },
+    "Wait for next wave approval": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sqs:sendMessage.waitForTaskToken",
+      "Parameters": {
+        "QueueUrl": "${APPROVAL_QUEUE_URL}",
+        "MessageBody": {
+          "MessageTitle": "Waiting for next deployment to be approved",
+          "CurrentDeploymentWave.$": "$.iterator.index",
+          "TaskToken.$": "$$.Task.Token"
+        }
+      },
+      "Next": "Deployment Approved?",
+      "ResultPath": "$.TaskResult"
+    },
+    "Deployment Approved?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.TaskResult.approval_status",
+          "StringEquals": "Approved",
+          "Next": "Iterator"
+        }
+      ],
+      "Default": "Deployment Complete"
+    },
+    "Deployment Complete": {
+      "Type": "Pass",
+      "End": true
+    }
+  }
+}

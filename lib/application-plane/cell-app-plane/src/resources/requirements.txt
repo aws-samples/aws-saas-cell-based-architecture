@@ -1,0 +1,4 @@
+flask==3.0.3
+boto3
+psycopg[binary,pool]
+python-jose[cryptography]

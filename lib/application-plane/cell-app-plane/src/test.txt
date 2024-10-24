@@ -1,0 +1,2 @@
+<Do Not Delete>
+This is a test file needed to successfully run the unit test of Product Media Service

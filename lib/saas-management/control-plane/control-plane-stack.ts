@@ -290,15 +290,15 @@ export class ControlPlaneStack extends Stack {
           CellId: {
             type: JsonSchemaType.STRING,
           },
-          CellOperation: {
+          CellName: {
             type: JsonSchemaType.STRING,
-            enum: ['CHANGE_SIZE','CELL_VERSION'],
           },
-          CellConfiguration: {
-            type: JsonSchemaType.STRING,
+          WaveNumber: {
+            type: JsonSchemaType.INTEGER,
+            minimum: 1
           }
         },
-        required: ['CellId','CellOperation'],
+        required: ['CellId'],
       },
     });
 
@@ -307,8 +307,11 @@ export class ControlPlaneStack extends Stack {
       friendlyFunctionName: 'UpdateCellFunction',
       index: 'updateCell.py',
       entry: 'lib/saas-management/control-plane/src/lambdas/UpdateCell', 
-      handler: 'handler',         
-    })
+      handler: 'handler',        
+      environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn}
+    });
+
+    cellManagementTable.grantWriteData(updateCellLambda.lambdaFunction);
     
     const updateCellResource = controlPlaneApi.addResource("UpdateCell");
     updateCellResource.addCorsPreflight({

@@ -34,7 +34,3 @@ npx cdk deploy "Cell-$CELL_ID-Tenant-$TENANT_ID" --app "npx ts-node bin/app.ts" 
   --outputs-file tenant_stack_outputs.json
 
 cd ../scripts
-
-# chmod +x deploy-tenants.sh 
-#./deploy-tenants.sh tenant11
-#./deploy-tenants.sh tenant21

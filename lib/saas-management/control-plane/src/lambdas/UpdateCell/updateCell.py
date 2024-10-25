@@ -8,7 +8,6 @@ import logging
 # Initialize clients
 dynamodb = boto3.resource('dynamodb')
 
-
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 

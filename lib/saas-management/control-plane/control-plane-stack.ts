@@ -590,14 +590,14 @@ export class ControlPlaneStack extends Stack {
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn}
     });
-    cellManagementTable.grantWriteData(persistTenantMetadataLambda.lambdaFunction);    
+    cellManagementTable.grantReadWriteData(persistTenantMetadataLambda.lambdaFunction);
 
 
     // Create an EventBridge rule to process Metadata from Cell creation
     const persistTenantMetadataRule = new events.Rule(this, 'PersistTenantMetadataRule', {
       eventBus: cellManagementBus,
       eventPattern: {
-        source: ['cellManagement.tenantCreated'],
+        source: ['cellManagement.tenantCreated','cellManagement.tenantCreationError'],
         detailType: ['TenantDetails'],
       },
     });

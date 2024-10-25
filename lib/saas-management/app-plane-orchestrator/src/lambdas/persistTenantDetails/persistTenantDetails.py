@@ -15,41 +15,81 @@ def handler(event, context):
     # Send a message to EventBridge
     cell_management_bus = os.environ.get('CELL_MANAGEMENT_BUS')
 
-    build_outputs = event.get("StackOutputs")
-
-    eventBridge_message = {
-        'Source': 'cellManagement.tenantCreated',
-        'DetailType': 'TenantDetails',
-        'EventBusName':  cell_management_bus
-    }
-
-    detail = {}
-
-    for item in build_outputs:
-        name = item['Name']
-        value = item['Value']
-        json_to_append = {name:value}
-        detail.update(json_to_append)
-
-    eventBridge_message.update({'Detail': json.dumps(detail)})
-
-    logger.info('EventBridge Message Generated: %s', eventBridge_message)
-
-    eventbridge_response = eventbridge_client.put_events(
-        Entries=[
-            eventBridge_message
-        ]
-    )
-
-    # Check if the event was sent successfully
-    if eventbridge_response['FailedEntryCount'] == 0:
-        return {
-            'statusCode': 200,
+    if event.get("Error") is None:
+        build_outputs = event.get("Build").get("ExportedEnvironmentVariables")
+        eventBridge_message = {
+            'Source': 'cellManagement.tenantCreated',
+            'DetailType': 'TenantDetails',
+            'EventBusName':  cell_management_bus
         }
+
+        detail = {}
+
+        for item in build_outputs:
+            name = item['Name']
+            value = item['Value']
+            json_to_append = {name:value}
+            detail.update(json_to_append)
+
+        eventBridge_message.update({'Detail': json.dumps(detail)})
+
+        logger.info('EventBridge Message Generated: %s', eventBridge_message)
+
+        eventbridge_response = eventbridge_client.put_events(
+            Entries=[
+                eventBridge_message
+            ]
+        )
+
+        # Check if the event was sent successfully
+        if eventbridge_response['FailedEntryCount'] == 0:
+            return {
+                'statusCode': 200,
+            }
+        else:
+            logger.error(f"Failed to send event to EventBridge")
+            logger.error(eventbridge_response)
+            return {
+                'statusCode': 500,
+                'body': json.dumps('Failed to send event to EventBridge')
+            }
     else:
-        logger.error(f"Failed to send event to EventBridge")
-        logger.error(eventbridge_response)
-        return {
-            'statusCode': 500,
-            'body': json.dumps('Failed to send event to EventBridge')
+        cause = json.loads(event.get("Cause"))
+        build_details = cause.get("Build")
+        exported_vars = build_details.get("ExportedEnvironmentVariables")
+        eventBridge_message = {
+            'Source': 'cellManagement.tenantCreationError',
+            'DetailType': 'TenantDetails',
+            'EventBusName':  cell_management_bus
         }
+
+        detail = {}
+
+        for item in exported_vars:
+            name = item['Name']
+            value = item['Value']
+            json_to_append = {name:value}
+            detail.update(json_to_append)
+
+        eventBridge_message.update({'Detail': json.dumps(detail)})
+
+        logger.info('EventBridge Message Generated: %s', eventBridge_message)
+
+        eventbridge_response = eventbridge_client.put_events(
+            Entries=[
+                eventBridge_message
+            ]
+        )
+
+        # Check if the event was sent successfully
+        if eventbridge_response['FailedEntryCount'] == 0:
+            return {
+                'statusCode': 200,
+            }
+        else:
+            logger.error(f"Failed to send event to EventBridge")
+            logger.error(eventbridge_response)
+            return {
+                'statusCode': 500,
+                'body': json.dumps('Failed to send event to EventBridge')
+            }

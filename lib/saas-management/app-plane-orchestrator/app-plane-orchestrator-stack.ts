@@ -1,10 +1,10 @@
 import {CfnOutput, Stack, StackProps, RemovalPolicy, Fn} from 'aws-cdk-lib';
-import { IntegrationPattern,JsonPath, Pass, Fail, Choice, Result, Succeed, Condition, StateMachine, DefinitionBody, LogLevel } from 'aws-cdk-lib/aws-stepfunctions';
+import { IntegrationPattern,JsonPath, Pass, Fail, Choice, Succeed, Condition, StateMachine, DefinitionBody, LogLevel } from 'aws-cdk-lib/aws-stepfunctions';
 import { CodeBuildStartBuild, LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Project, BuildSpec, Source, ComputeType, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
-import { Bucket,BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Key } from 'aws-cdk-lib/aws-kms';
@@ -296,7 +296,7 @@ export class AppPlaneOrchestratorStack extends Stack {
     const createCellStateMachine = new StateMachine(this, 'CellManagementStateMachine', {
       definitionBody: DefinitionBody.fromChainable(stepFunctionDefinition),
       logs: { 
-        level: LogLevel.ERROR,
+        level: LogLevel.ALL,
         destination: new LogGroup(this, 'CreateCellStepFunctionLogGroup', {
           retention: RetentionDays.ONE_WEEK,
           removalPolicy: RemovalPolicy.DESTROY,
@@ -408,6 +408,35 @@ export class AppPlaneOrchestratorStack extends Stack {
         ],
     }));
 
+    // Lambda function that processes requests from API Gateway to create a new Cell
+    const persistTenantDetailsLambda = new LambdaFunction(this, 'PersistTenantDetails', {
+      friendlyFunctionName: 'PersistTenantDetailsFunction',
+      index: 'persistTenantDetails.py',
+      entry: 'lib/saas-management/app-plane-orchestrator/src/lambdas/persistTenantDetails',
+      handler: 'handler',
+      environmentVariables: {'CELL_MANAGEMENT_BUS': props.orchestrationBus.eventBusName}
+    });
+
+    props.orchestrationBus.grantPutEventsTo(persistTenantDetailsLambda.lambdaFunction);
+
+    // Create a Step Functions task to invoke the Lambda function
+    const invokeTenantLambdaTaskOnSuccess = new LambdaInvoke(this, 'PersistTenantMetadataOnSuccess', {
+        lambdaFunction: persistTenantDetailsLambda.lambdaFunction,
+        outputPath: '$.Payload',
+    });
+
+    // Create a Step Functions task to invoke the Lambda function
+    const invokeTenantLambdaTaskOnFailure = new LambdaInvoke(this, 'PersistTenantMetadataOnFailure', {
+      lambdaFunction: persistTenantDetailsLambda.lambdaFunction,
+      outputPath: '$.Payload',
+    });
+
+    // Define success and failure states
+    const tenantBuildSucceeded = new Succeed(this, 'Tenant Build Succeeded');
+    const tenantBuildFailed = new Fail(this, 'Tenant Build Failed', {
+      cause: 'CodeBuild build failed',
+    });
+
     // Create a Step Function task to start the CodeBuild project
     const startTenantBuildTask = new CodeBuildStartBuild(this, 'startTenantBuildTask', {
       project: tenantMgtCodeBuild,
@@ -420,54 +449,17 @@ export class AppPlaneOrchestratorStack extends Stack {
         TENANT_LISTENER_PRIORITY: { value: JsonPath.stringAt('$.TenantListenerPriority') },
         PRODUCT_IMAGE_VERSION: { value: JsonPath.stringAt('$.ProductImageVersion') }
       },
-    });
-
-    // Create a Pass state to process the CodeBuild output
-    const processTenantMgtOutput = new Pass(this, 'processTenantMgtOutput', {
-        parameters: {
-          'StackOutputs.$': '$.Build.ExportedEnvironmentVariables',
-          'BuildStatus.$': '$.Build.BuildStatus',
-        },
-    });
-
-    // Lambda function that processes requests from API Gateway to create a new Cell
-    const persistTenantDetailsLambda = new LambdaFunction(this, 'PersistTenantDetails', {
-       friendlyFunctionName: 'PersistTenantDetailsFunction',
-       index: 'persistTenantDetails.py',
-       entry: 'lib/saas-management/app-plane-orchestrator/src/lambdas/persistTenantDetails',
-       handler: 'handler',
-       environmentVariables: {'CELL_MANAGEMENT_BUS': props.orchestrationBus.eventBusName}
-    });
-
-    props.orchestrationBus.grantPutEventsTo(persistTenantDetailsLambda.lambdaFunction);
-
-    // Create a Step Functions task to invoke the Lambda function
-    const invokeTenantLambdaTask = new LambdaInvoke(this, 'PersistTenantMetadata', {
-       lambdaFunction: persistTenantDetailsLambda.lambdaFunction,
-       outputPath: '$.Payload',
-    });
-
-    // Create a Choice state to check the build status
-    const checkTenantBuildStatus = new Choice(this, 'Check Tenant Build Status');
-
-    // Define success and failure states
-    const tenantBuildSucceeded = new Succeed(this, 'Tenant Build Succeeded');
-    const tenantBuildFailed = new Fail(this, 'Tenant Build Failed', {
-      cause: 'CodeBuild build failed',
-    });
+    }).addCatch(invokeTenantLambdaTaskOnFailure.next(tenantBuildFailed));
 
     const tenantStepFunctionDefinition = startTenantBuildTask
-      .next(processTenantMgtOutput)
-      .next(checkTenantBuildStatus
-        .when(Condition.stringEquals('$.BuildStatus', 'SUCCEEDED'), invokeTenantLambdaTask.next(tenantBuildSucceeded))
-        .when(Condition.stringEquals('$.BuildStatus', 'FAILED'), tenantBuildFailed)
-        .otherwise(tenantBuildFailed));
+      .next(invokeTenantLambdaTaskOnSuccess)
+      .next(tenantBuildSucceeded)
 
     // Create the state machine
     const createTenantStateMachine = new StateMachine(this, 'TenantManagementStateMachine', {
       definitionBody: DefinitionBody.fromChainable(tenantStepFunctionDefinition),
       logs: { 
-        level: LogLevel.ERROR,
+        level: LogLevel.ALL,
         destination: new LogGroup(this, 'CreateTenantStepFunctionLogGroup', {
           retention: RetentionDays.ONE_WEEK,
           removalPolicy: RemovalPolicy.DESTROY,

@@ -4,7 +4,7 @@ import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 import { Construct } from 'constructs';
 import { Dashboard, GraphWidget, MathExpression, Row, GraphWidgetView, TextWidget } from "aws-cdk-lib/aws-cloudwatch";
 
-export class CommonObservabilityStack extends Stack {
+export class CommonObservability extends Stack {
 
   readonly s3LogBucketArn: string;
 

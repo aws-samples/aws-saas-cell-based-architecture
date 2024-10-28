@@ -13,7 +13,7 @@ TENANT_ID=$2
 
 CELL_STACK_NAME="Cell-$CELL_ID"
 
-CELL_ROUTER_STACK="CellRouterStack"
+CELL_ROUTER_STACK="CellRouter"
 
 USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $CELL_STACK_NAME --query "Stacks[0].Outputs[?ExportName=='CellUserPoolId-$CELL_ID'].OutputValue" | jq -r '.[0]')
 CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $CELL_STACK_NAME --query "Stacks[0].Outputs[?ExportName=='CellAppClientId-$CELL_ID'].OutputValue" | jq -r '.[0]')

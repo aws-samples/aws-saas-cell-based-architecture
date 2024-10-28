@@ -24,18 +24,17 @@ import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { readFileSync } from 'fs';
 import { Construct } from 'constructs';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
-import { NagSuppressions } from 'cdk-nag';
 
-export interface CommonCellRouterStackProps extends StackProps
+export interface CommonCellRouterProps extends StackProps
 {
   readonly s3LoggingBucketArn: string;
 }
 
-export class CommonCellRouterStack extends Stack {
+export class CommonCellRouter extends Stack {
 
   readonly s3ConfigBucketName: string;
 
-  constructor(scope: Construct, id: string, props: CommonCellRouterStackProps) {
+  constructor(scope: Construct, id: string, props: CommonCellRouterProps) {
     
     /**
      * call the parent constructor

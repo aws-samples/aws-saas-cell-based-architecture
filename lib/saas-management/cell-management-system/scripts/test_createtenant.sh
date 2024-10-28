@@ -1,23 +1,37 @@
 #!/bin/bash -e
 
 if [ -z "$1" ]; then
-  echo "Usage: $0 <cellId> <tenantId>"
+  echo "Usage: $0 <cellId> <tenantName> <tenantEmail> <tenantTier>"
   exit 1
 fi
 
 if [ -z "$2" ]; then
-  echo "Usage: $1 <cellId> <tenantId>"
+  echo "Usage: $1 <cellId> <tenantName> <tenantEmail> <tenantTier>"
   exit 1
 fi
 
+if [ -z "$3" ]; then
+  echo "Usage: $0 <cellId> <tenantName> <tenantEmail> <tenantTier>"
+  exit 1
+fi
+
+if [ -z "$4" ]; then
+  echo "Usage: $0 <cellId> <tenantName> <tenantEmail> <tenantTier>"
+  exit 1
+fi
+
+
 CELL_ID=$1
-TENANT_ID=$2
+TENANT_NAME=$2
+TENANT_EMAIL=$3
+TENANT_TIER=$4
 
+echo "Deploying tenant $TENANT_NAME in cell $CELL_ID"
 
-CONTROL_PLANE_STACK_NAME="ControlPlaneStack"
+CELL_MANAGEMENT_STACK_NAME="CellManagementSystem"
 
-USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $CONTROL_PLANE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" | jq -r '.[0]')
-CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $CONTROL_PLANE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" | jq -r '.[0]')
+USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $CELL_MANAGEMENT_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" | jq -r '.[0]')
+CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $CELL_MANAGEMENT_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" | jq -r '.[0]')
 
 USER="admin"
 PASSWORD="#CellBased1234"
@@ -65,20 +79,22 @@ ID_TOKEN=$(echo "$AUTHENTICATION_RESULT" | jq -r '.IdToken')
 echo "ID_TOKEN: ${ID_TOKEN}"
 
 
-CONTROL_PLANE_API_ENDPOINT=$(aws cloudformation describe-stacks \
-    --stack-name "$CONTROL_PLANE_STACK_NAME" \
+CELL_MANAGEMENT_API_ENDPOINT=$(aws cloudformation describe-stacks \
+    --stack-name "$CELL_MANAGEMENT_STACK_NAME" \
     --query "Stacks[0].Outputs[?contains(OutputKey,'ControlPlaneApiEndpoint')].OutputValue" \
     --output text)
-echo "CONTROL_PLANE_API_ENDPOINT: ${CONTROL_PLANE_API_ENDPOINT}"
+echo "CELL_MANAGEMENT_API_ENDPOINT: ${CELL_MANAGEMENT_API_ENDPOINT}"
 
-# echo "activating tenant..."
+# echo "creating tenant..."
 
-TENANT_STATUS=$(curl --request PUT \
-    --url "${CONTROL_PLANE_API_ENDPOINT}CellControlPlaneApi/ActivateTenant" \
+TENANT_ID=$(curl --request POST \
+    --url "${CELL_MANAGEMENT_API_ENDPOINT}AssignTenantToCell" \
     --header "Authorization: Bearer ${ID_TOKEN}" \
     --header 'content-type: application/json' \
-    --data "{\"CellId\":\"$CELL_ID\",\"TenantId\":\"$TENANT_ID\"}" \
-    | jq -r '.Status')
+    --data "{\"CellId\":\"$CELL_ID\",\"TenantName\":\"$TENANT_NAME\",\"TenantEmail\": \"$TENANT_EMAIL\",\"TenantTier\":\"$TENANT_TIER\"}" \
+    | jq -r '.TenantId')
 
-echo "TENANT STATUS: ${TENANT_STATUS}"
+echo "TENANT ID: ${TENANT_ID}"
+
+
 

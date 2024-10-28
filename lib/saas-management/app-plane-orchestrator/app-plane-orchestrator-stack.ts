@@ -250,8 +250,8 @@ export class AppPlaneOrchestratorStack extends Stack {
     }));
 
     // Define success and failure states
-    const buildSucceeded = new Succeed(this, 'Build Succeeded');
-    const buildFailed = new Fail(this, 'Build Failed', {
+    const buildSucceeded = new Succeed(this, 'Cell Creation Succeeded');
+    const buildFailed = new Fail(this, 'Cell Creation Failed', {
       cause: 'CodeBuild build failed',
     });
 
@@ -279,7 +279,7 @@ export class AppPlaneOrchestratorStack extends Stack {
     });
 
     // Create a Step Function task to start the CodeBuild project
-    const startBuildTask = new CodeBuildStartBuild(this, 'StartBuild', {
+    const startBuildTask = new CodeBuildStartBuild(this, 'StartCellCreation', {
       project: cellCodebuildProject,
       integrationPattern: IntegrationPattern.RUN_JOB,
       environmentVariablesOverride: {
@@ -432,13 +432,13 @@ export class AppPlaneOrchestratorStack extends Stack {
     });
 
     // Define success and failure states
-    const tenantBuildSucceeded = new Succeed(this, 'Tenant Build Succeeded');
-    const tenantBuildFailed = new Fail(this, 'Tenant Build Failed', {
+    const tenantBuildSucceeded = new Succeed(this, 'Tenant Creation Succeeded');
+    const tenantBuildFailed = new Fail(this, 'Tenant Creation Failed', {
       cause: 'CodeBuild build failed',
     });
 
     // Create a Step Function task to start the CodeBuild project
-    const startTenantBuildTask = new CodeBuildStartBuild(this, 'startTenantBuildTask', {
+    const startTenantBuildTask = new CodeBuildStartBuild(this, 'StartTenantCreation', {
       project: tenantMgtCodeBuild,
       integrationPattern: IntegrationPattern.RUN_JOB,
       environmentVariablesOverride: {

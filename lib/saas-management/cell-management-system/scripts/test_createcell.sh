@@ -75,11 +75,9 @@ echo "ID_TOKEN: ${ID_TOKEN}"
 
 CELL_MANAGEMENT_API_ENDPOINT=$(aws cloudformation describe-stacks \
     --stack-name "$CELL_MANAGEMENT_STACK_NAME" \
-    --query "Stacks[0].Outputs[?contains(OutputKey,'ControlPlaneApiEndpoint')].OutputValue" \
+    --query "Stacks[0].Outputs[?contains(OutputKey,'CellManagementApiEndpoint')].OutputValue" \
     --output text)
 echo "CELL_MANAGEMENT_API_ENDPOINT: ${CELL_MANAGEMENT_API_ENDPOINT}"
-
-# echo "creating cell..."
 
 CELL_ID=$(curl --request POST \
     --url "${CELL_MANAGEMENT_API_ENDPOINT}CreateCell" \
@@ -93,21 +91,15 @@ echo "CELL ID: ${CELL_ID}"
 echo "Waiting for Cell to be created"
 sleep 10
 
-CELL_STATUS=$(curl --request GET \
-        --url "${CELL_MANAGEMENT_API_ENDPOINT}DescribeCell?CellId=${CELL_ID}" \
-        --header "Authorization: Bearer ${ID_TOKEN}" \
-        --header 'Accept: application/json' \
-        | jq -r '.Status')
+CELL_STATUS="creating"
 
-while [ "$CELL_STATUS" != "available" ]
+while [[ "$CELL_STATUS" != "available" && "$CELL_STATUS" != "failed" ]]
 do
     sleep 30
-    CELL_STATUS=$(curl --request GET \
+    CELL_STATUS=$(curl -s --request GET \
         --url "${CELL_MANAGEMENT_API_ENDPOINT}DescribeCell?CellId=${CELL_ID}" \
         --header "Authorization: Bearer ${ID_TOKEN}" \
         --header 'Accept: application/json' \
         | jq -r '.Status')
-    echo "Cell is now ${CELL_STATUS}"
+    echo "Cell ${CELL_ID}, status ${CELL_STATUS}"
 done
-
-echo "Cell is now ${CELL_STATUS}"

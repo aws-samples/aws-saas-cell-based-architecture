@@ -67,7 +67,7 @@ echo "ID_TOKEN: ${ID_TOKEN}"
 
 CELL_MANAGEMENT_API_ENDPOINT=$(aws cloudformation describe-stacks \
     --stack-name "$CELL_MANAGEMENT_STACK_NAME" \
-    --query "Stacks[0].Outputs[?contains(OutputKey,'ControlPlaneApiEndpoint')].OutputValue" \
+    --query "Stacks[0].Outputs[?contains(OutputKey,'CellManagementApiEndpoint')].OutputValue" \
     --output text)
 echo "CELL_MANAGEMENT_API_ENDPOINT: ${CELL_MANAGEMENT_API_ENDPOINT}"
 
@@ -81,4 +81,3 @@ TENANT_STATUS=$(curl --request PUT \
     | jq -r '.Status')
 
 echo "TENANT STATUS: ${TENANT_STATUS}"
-

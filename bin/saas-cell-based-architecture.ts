@@ -2,11 +2,11 @@
 import { App } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag'
 import { Aspects } from 'aws-cdk-lib';
-import { ControlPlaneStack } from '../lib/saas-management/control-plane/control-plane-stack';
-import { CommonCellRouterStack } from '../lib/application-plane/common-components/cell-router/common-cell-router-stack';
-import { AppPlaneOrchestratorStack } from '../lib/saas-management/app-plane-orchestrator/app-plane-orchestrator-stack';
-import { CommonObservabilityStack } from '../lib/application-plane/common-components/observability/observability-stack';
-import { BridgeStack } from '../lib/saas-management/bridge/bridge-stack';
+import { CellManagementSystem } from '../lib/saas-management/cell-management-system/cell-management-system-stack';
+import { CommonCellRouter } from '../lib/application-plane/common-components/cell-router/common-cell-router-stack';
+import { CellProvisioningSystem } from '../lib/saas-management/cell-provisioning-system/cell-provisioning-system-stack';
+import { CommonObservability } from '../lib/application-plane/common-components/observability/observability-stack';
+import { Bridge } from '../lib/saas-management/bridge/bridge-stack';
 
 const app = new App();
 
@@ -20,39 +20,45 @@ Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }))
 /**
  * Common observability components
  */
-let commonObservabilityStack = new CommonObservabilityStack(app, 'CommonObservabilityStack');
+let commonObservabilityStack = new CommonObservability(app, 'CommonObservability',{
+    description: "Contains common observability resources for the solution"
+});
 
 /*
  * Create the components that bridge the SAAS control plane and
  * application plane. This includes the EventBridge EventBus, 
  * S3 bucket for application plane source archives and SSM Params
  */
-let bridgeStack = new BridgeStack(app, 'BridgeStack', {
+let bridgeStack = new Bridge(app, 'Bridge', {
+    description: "Contains integration components used for communication between the Cell Management System and the Cell Provisioning System.",
     s3LoggingBucketArn: commonObservabilityStack.s3LogBucketArn
 });
 
 /**
  * Create the Common Cell Router components
  */
-let cellRouter = new CommonCellRouterStack(app, 'CellRouterStack', {
+let cellRouterStack = new CommonCellRouter(app, 'CellRouter', {
+    description: "Thinnest possible routing later, used for deterministic routing of api requests into individual cells.",
     s3LoggingBucketArn: commonObservabilityStack.s3LogBucketArn
 });
 
 /**
- * Create the Control Plane used for managing Cells and Tenants
+ * Create the Cell Management system used for managing Cells and Tenants
  */
-let controlPlaneStack = new ControlPlaneStack(app, 'ControlPlaneStack',{
-    s3ConfigBucketName: cellRouter.s3ConfigBucketName,
+let cellManagementSystemStack = new CellManagementSystem(app, 'CellManagementSystem',{
+    description: "Cell management system, used for creation and management of cells and tenants.",
+    s3ConfigBucketName: cellRouterStack.s3ConfigBucketName,
     eventBusArn: bridgeStack.orchestrationEventBus.eventBusArn,
     versionSsmParameter: bridgeStack.imageVersionParam
 });
 
 /**
- * Create the Application Plane Deployment Orchestrator
+ * Create the Cell Provisioning System used for deploying cells and tenants
  */
-let appPlaneOrchestrator = new AppPlaneOrchestratorStack(app, 'AppPlaneOrchestratorStack', {
+let cellProvisioningSystemStack = new CellProvisioningSystem(app, 'CellProvisioningSystem', {
+    description: "Cell provisioning system, used for deployment of cells and tenants.",
     orchestrationBus: bridgeStack.orchestrationEventBus,
-    cellManagementTable: controlPlaneStack.cellManagementTable,
+    cellManagementTable: cellManagementSystemStack.cellManagementTable,
     s3LoggingBucketArn: commonObservabilityStack.s3LogBucketArn,
     s3CellSourceBucketArn: bridgeStack.cellSourceBucketArn
 });

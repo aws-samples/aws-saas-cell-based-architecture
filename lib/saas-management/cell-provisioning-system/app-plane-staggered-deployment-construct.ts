@@ -57,7 +57,7 @@ export class AppPlaneStaggeredDeploymentsConstruct extends Construct {
       const lambdaFunctionPrep = new lambda.Function(this, "prep-deploy", {
         handler: "lambda-prepare-deploy.lambda_handler",
         runtime: lambda.Runtime.PYTHON_3_12,
-        code: new lambda.AssetCode(process.cwd() + '/lib/saas-management/app-plane-orchestrator/src/lambdas/PrepDeploy'),
+        code: new lambda.AssetCode(process.cwd() + '/lib/saas-management/cell-provisioning-system/src/lambdas/PrepDeploy'),
         memorySize: 512,
         timeout: cdk.Duration.seconds(10),
         environment: {
@@ -172,7 +172,7 @@ export class AppPlaneStaggeredDeploymentsConstruct extends Construct {
       const lambdaFunctionIterator = new lambda.Function(this, "WaveIterator", {
         handler: "iterator.lambda_handler",
         runtime: lambda.Runtime.PYTHON_3_12,
-        code: lambda.Code.fromAsset(process.cwd() + '/lib/saas-management/app-plane-orchestrator/src/lambdas/Iterator', {exclude: ['*.json']}),
+        code: lambda.Code.fromAsset(process.cwd() + '/lib/saas-management/cell-provisioning-system/src/lambdas/Iterator', {exclude: ['*.json']}),
         memorySize: 512,
         timeout: cdk.Duration.seconds(10),
       });

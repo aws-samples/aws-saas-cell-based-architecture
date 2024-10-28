@@ -9,7 +9,7 @@ export interface BridgeStackProps extends StackProps {
   s3LoggingBucketArn: string
 }
 
-export class BridgeStack extends Stack {
+export class Bridge extends Stack {
 
   readonly orchestrationEventBus: EventBus;
   readonly imageVersionParam: StringParameter;

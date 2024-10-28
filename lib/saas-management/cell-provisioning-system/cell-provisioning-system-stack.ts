@@ -1,5 +1,5 @@
-import {CfnOutput, Stack, StackProps, RemovalPolicy, Fn} from 'aws-cdk-lib';
-import { IntegrationPattern,JsonPath, Pass, Fail, Choice, Succeed, Condition, StateMachine, DefinitionBody, LogLevel } from 'aws-cdk-lib/aws-stepfunctions';
+import { CfnOutput, Stack, StackProps, RemovalPolicy, Fn } from 'aws-cdk-lib';
+import { IntegrationPattern,JsonPath, Fail, Succeed, StateMachine, DefinitionBody, LogLevel } from 'aws-cdk-lib/aws-stepfunctions';
 import { CodeBuildStartBuild, LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Project, BuildSpec, Source, ComputeType, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
@@ -16,16 +16,16 @@ import { AppPlaneStaggeredDeploymentsConstruct } from './app-plane-staggered-dep
 import { Construct } from 'constructs';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 
-export interface AppPlaneOrchestratorInterface extends StackProps {
+export interface CellProvisioningSystemProps extends StackProps {
   orchestrationBus: events.EventBus;
   cellManagementTable: Table;
   s3LoggingBucketArn: string;
   s3CellSourceBucketArn: string;
 }
 
-export class AppPlaneOrchestratorStack extends Stack {
+export class CellProvisioningSystem extends Stack {
 
-  constructor(scope: Construct, id: string, props: AppPlaneOrchestratorInterface) {
+  constructor(scope: Construct, id: string, props: CellProvisioningSystemProps) {
     super(scope, id, props);
 
     // Handle CDK nag suppressions.
@@ -259,7 +259,7 @@ export class AppPlaneOrchestratorStack extends Stack {
     const persistCellDetailsLambda = new LambdaFunction(this, 'PersistCellDetails', {
       friendlyFunctionName: 'PersistCellDetailsFunction',
       index: 'persistCellDetails.py',
-      entry: 'lib/saas-management/app-plane-orchestrator/src/lambdas/persistCellDetails', 
+      entry: 'lib/saas-management/cell-provisioning-system/src/lambdas/persistCellDetails', 
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_BUS': props.orchestrationBus.eventBusName}
     });
@@ -412,7 +412,7 @@ export class AppPlaneOrchestratorStack extends Stack {
     const persistTenantDetailsLambda = new LambdaFunction(this, 'PersistTenantDetails', {
       friendlyFunctionName: 'PersistTenantDetailsFunction',
       index: 'persistTenantDetails.py',
-      entry: 'lib/saas-management/app-plane-orchestrator/src/lambdas/persistTenantDetails',
+      entry: 'lib/saas-management/cell-provisioning-system/src/lambdas/persistTenantDetails',
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_BUS': props.orchestrationBus.eventBusName}
     });

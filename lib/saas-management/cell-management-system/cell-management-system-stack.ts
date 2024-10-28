@@ -90,7 +90,7 @@ export class CellManagementSystem extends Stack {
     /**
      * The API Gateway API for the control plane operations
      */
-    const api = new RestApi(this, 'ControlPlaneApi', {
+    const api = new RestApi(this, 'CellManagementApi', {
       deployOptions: {
         stageName: 'prod',
         loggingLevel: MethodLoggingLevel.ERROR,
@@ -146,6 +146,7 @@ export class CellManagementSystem extends Stack {
     cellManagementBus.grantPutEventsTo(createCellLambda.lambdaFunction);
 
     const createCellResource = api.root.addResource("CreateCell");
+    
     createCellResource.addCorsPreflight({
       allowOrigins: ['*'],
         allowMethods: ['POST', 'OPTIONS'],
@@ -187,6 +188,7 @@ export class CellManagementSystem extends Stack {
     cellManagementTable.grantReadData(listCellsLambda.lambdaFunction);
     
     const listCellsResource = api.root.addResource("ListCells");
+
     listCellsResource.addCorsPreflight({
       allowOrigins: ['*'],
       allowMethods: ['GET', 'OPTIONS'],
@@ -245,6 +247,7 @@ export class CellManagementSystem extends Stack {
     cellManagementTable.grantReadData(describeCellLambda.lambdaFunction); 
 
     const describeCellResource = api.root.addResource("DescribeCell");
+
     describeCellResource.addCorsPreflight({
       allowOrigins: ['*'],
         allowMethods: ['GET', 'OPTIONS'],
@@ -578,7 +581,7 @@ export class CellManagementSystem extends Stack {
     persistCellMetadataRule.addTarget(new targets.LambdaFunction(persistCellMetadataLambda.lambdaFunction));
 
     /**
-     * STart of Persist Tenant
+     * Start of Persist Tenant
      */
     // Lambda function that processes requests from API Gateway to create a new Cell
     const persistTenantMetadataLambda = new LambdaFunction(this, 'PersistTenantMetadataFunction', {

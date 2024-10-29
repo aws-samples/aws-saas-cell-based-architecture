@@ -80,8 +80,24 @@ def lambda_handler(event, context):
             request['headers']['authorization'] = [{'key': 'Authorization', 'value': authorization}]
             print("new request: ",json.dumps(request))
             return request
+    elif "authorization" not in request['headers']:
+        print('Authorization not found in request headers, so returning a 401 response code')
+        response = {
+            'status': '401',
+            'statusDescription': 'Unauthorized',
+            'headers': {
+                'Content-Type': [
+                    {
+                    'key': 'Content-Type',
+                    'value': 'application/json'
+                    }
+                ]
+            },
+            'body': "Not authorized"
+        }
+        return response
     else:
-        print('Tenant ID or Authorization not found in request headers, so returning a 400 response code')
+        print('TenantId not found in request headers, so returning a 400 response code')
         response = {
             'status': '400',
             'statusDescription': 'Bad Request',

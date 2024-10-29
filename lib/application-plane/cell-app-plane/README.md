@@ -18,14 +18,9 @@ All the scripts are in the scripts folder
 ```
 ./deploy-tenant.sh cell1 tenant1 xxxxxx@amazon.com
 ```
-4. Test using test.sh and create product
-```
-./test.sh cell1 tenant1
-```
 
-5. To update a tenant in the cell (pass cell id, tenant id, email address as param)
+4. To update a tenant in the cell (pass cell id, tenant id, email address as param)
 
 ```
 ./update-tenant.sh cell1 tenant1 xxxxxx@amazon.com
 ```
-

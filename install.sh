@@ -6,7 +6,7 @@ EMAIL="user@awssaascellworkshop.com"
 ./scripts/deploy.sh
 
 # Create a new cell with free tier
-#./lib/saas-management/cell-management-system/scripts/test_createcell.sh freetier S 1
+./lib/saas-management/cell-management-system/scripts/test_createcell.sh freetier S 1
 CELL_ID=$(cat cell_id.txt)
 echo "Cell ID: $CELL_ID"
 

@@ -105,6 +105,7 @@ export class CellManagementSystem extends Stack {
         authorizationType: AuthorizationType.CUSTOM,
         authorizer: tokenAuthorizer,
       },
+      cloudWatchRole: true
     });
 
     /**

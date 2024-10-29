@@ -29,6 +29,10 @@ export class CdkNagUtils {
         reason: "Suppress false positive.  Minimum TLS version is set"
       },
       {
+        id: 'AwsSolutions-CFR7',
+        reason: "We are leveraging origin access identities"
+      },
+      {
         id: 'AwsSolutions-IAM4',
         reason: 'AWS managed policies acceptable for this solution.'
       }

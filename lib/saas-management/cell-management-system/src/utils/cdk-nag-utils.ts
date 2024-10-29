@@ -17,6 +17,10 @@ export class CdkNagUtils {
         reason: 'Authorization cannot be used for OPTIONS as part of CORS'
       },
       {
+        id: 'AwsSolutions-IAM4',
+        reason: 'AWS Managed policies are permitted.'
+      },
+      {
         id: 'AwsSolutions-IAM5',
         reason: 'Restriction applied at the log group level, and more granular restrictions are not possible as resources are created dynamically as and when required.'
       },

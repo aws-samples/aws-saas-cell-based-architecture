@@ -88,6 +88,9 @@ CELL_ID=$(curl --request POST \
 
 echo "CELL ID: ${CELL_ID}"
 
+# making cell id available to the next script
+echo $CELL_ID > cell_id.txt
+
 echo "Waiting for Cell to be created"
 sleep 10
 

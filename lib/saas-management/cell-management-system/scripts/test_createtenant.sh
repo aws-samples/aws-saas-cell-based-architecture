@@ -95,6 +95,21 @@ TENANT_ID=$(curl --request POST \
     | jq -r '.TenantId')
 
 echo "TENANT ID: ${TENANT_ID}"
+echo $TENANT_ID > tenant_id.txt
+
+
+TENANT_STATUS="creating"
+
+while [[ "$TENANT_STATUS" != "available" && "$TENANT_STATUS" != "failed" ]]
+do
+    sleep 30
+    TENANT_STATUS=$(curl -s --request GET \
+        --url "${CELL_MANAGEMENT_API_ENDPOINT}DescribeTenant?CellId=${CELL_ID}&TenantId=${TENANT_ID}" \
+        --header "Authorization: Bearer ${ID_TOKEN}" \
+        --header 'Accept: application/json' \
+        | jq -r '.Status')
+    echo "CellId ${CELL_ID}, TenantID ${TENANT_ID}, status ${TENANT_STATUS}"
+done
 
 
 

@@ -219,21 +219,7 @@ export class CellManagementSystem extends Stack {
     /**
      * Start of describeCell method and associated resources
      */
-    const describeCellRequestByCellIdModel = api.addModel('DescribeCellRequestByCellIdModel', {
-      contentType: 'application/json',
-      schema: {
-        schema: JsonSchemaVersion.DRAFT7,
-        title: 'Describe Cell Request by CellId Data Model',
-        type: JsonSchemaType.OBJECT,
-        properties: {
-          CellId: {
-            type: JsonSchemaType.STRING,
-          }
-        },
-        required: ['CellId'],
-      },
-    });
-
+    
     // Lambda function that processes requests from API Gateway to Describe an existing Cell
     const describeCellLambda = new LambdaFunction(this, 'DescribeCellFunction', {
       friendlyFunctionName: 'DescribeCellFunction',
@@ -420,6 +406,54 @@ export class CellManagementSystem extends Stack {
         requestValidatorOptions: {
           validateRequestBody: true,
           validateRequestParameters: false,
+        },
+        authorizationType: AuthorizationType.CUSTOM,
+        authorizer: tokenAuthorizer,
+      }
+    );
+
+    /**
+     * Start of describeTenant method and associated resources
+     */    
+    // Lambda function that processes requests from API Gateway to Describe an existing Cell
+    const describeTenantLambda = new LambdaFunction(this, 'DescribeTenantFunction', {
+      friendlyFunctionName: 'DescribeTenantFunction',
+      index: 'describeTenant.py',
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/DescribeTenant', 
+      handler: 'handler',      
+      environmentVariables: {
+        'TENANT_MANAGEMENT_TABLE': cellManagementTable.tableArn
+      }
+    })
+    cellManagementTable.grantReadData(describeTenantLambda.lambdaFunction); 
+
+    const describeTenantResource = api.root.addResource("DescribeTenant");
+
+    describeTenantResource.addCorsPreflight({
+      allowOrigins: ['*'],
+        allowMethods: ['GET', 'OPTIONS'],
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+          'X-Amz-User-Agent',
+        ],
+    })
+
+    // Create a method and associate the request model for describe cell
+    const describeTenantMethod = describeTenantResource.addMethod(
+      'GET',
+      new LambdaIntegration(describeTenantLambda.lambdaFunction),
+      {
+        requestParameters: {
+          'method.request.querystring.CellId': true,
+          'method.request.querystring.TenantId': true,
+        },
+        requestValidatorOptions: {
+          validateRequestBody: false,
+          validateRequestParameters: true,
         },
         authorizationType: AuthorizationType.CUSTOM,
         authorizer: tokenAuthorizer,

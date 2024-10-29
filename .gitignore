@@ -384,3 +384,6 @@ cdk.out
 lib/application-plane/cell-app-plane.zip
 lib/application-plane/cell-app-plane/scripts/next_image_version.txt
 lib/application-plane/cell-app-plane/scripts/next_listener_rule_priority_base.txt
+cell_id.txt
+tenant_id.txt
+out.txt

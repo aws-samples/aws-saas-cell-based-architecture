@@ -13,11 +13,10 @@ import {
   Distribution, 
   LambdaEdgeEventType, 
   SecurityPolicyProtocol, 
-  OriginAccessIdentity, 
   AllowedMethods,
   OriginRequestPolicy
 } from 'aws-cdk-lib/aws-cloudfront';
-import { S3Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
 import { Bucket, BucketEncryption, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
@@ -46,9 +45,6 @@ export class CommonCellRouter extends Stack {
 
     const logBucket = Bucket.fromBucketArn(this,"loggingBucket",props.s3LoggingBucketArn);
 
-    //origin access identity
-    const cfOriginAccessIdentity = new OriginAccessIdentity(this, 'OriginAccessIdentity');
-
     const s3DefaultOriginBucket = new Bucket(this, 'DefaultOriginBucket',{
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
@@ -58,8 +54,6 @@ export class CommonCellRouter extends Stack {
       serverAccessLogsPrefix: "logs/buckets/default-origin-bucket/",
       serverAccessLogsBucket: logBucket,  
     });
-
-    s3DefaultOriginBucket.grantRead(cfOriginAccessIdentity);
 
     /**
      * this variable is used to define the path and permissions
@@ -109,9 +103,7 @@ export class CommonCellRouter extends Stack {
       logFilePrefix: 'logs/cloudfront/cell-router/',
       minimumProtocolVersion: SecurityPolicyProtocol.TLS_V1_2_2021,
       defaultBehavior: {
-        origin: new S3Origin(s3DefaultOriginBucket,{
-          originAccessIdentity: cfOriginAccessIdentity,
-        }),
+        origin: S3BucketOrigin.withOriginAccessControl(s3DefaultOriginBucket),
         cachePolicy: new CachePolicy(this, 'ApiCachePolicy', {
           headerBehavior: CacheHeaderBehavior.allowList('tenantid'),
           queryStringBehavior: CacheQueryStringBehavior.all(),

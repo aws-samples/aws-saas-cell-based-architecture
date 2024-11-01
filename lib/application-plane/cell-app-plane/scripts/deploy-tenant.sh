@@ -15,18 +15,26 @@ PRODUCT_IMAGE_VERSION=$5
 
 cd ../cdk
 echo ${PWD}
+echo Compiling TypeScript
 npx tsc
+echo Installing npm packages
 npm install
+
+echo Executing npm run build
 npm run build
+
+echo Executing cdk synth
 cdk synth
+
+echo Starting the deployment of CDK Stack
 
 # Run the CDK deploy command with the correct parameters
 npx cdk deploy "Cell-$CELL_ID-Tenant-$TENANT_ID" --app "npx ts-node bin/app.ts" \
-  -c cellId="$CELL_ID" \
-  -c tenantId="$TENANT_ID" \
-  -c tenantEmail="$TENANT_EMAIL" \
-  -c tenantListenerPriorityBase="$TENANT_LISTENER_PRIORITY" \
-  -c productImageVersion="$PRODUCT_IMAGE_VERSION" \
+  --context cellId="$CELL_ID" \
+  --context tenantId="$TENANT_ID" \
+  --context tenantEmail="$TENANT_EMAIL" \
+  --context tenantListenerPriorityBase="$TENANT_LISTENER_PRIORITY" \
+  --context productImageVersion="$PRODUCT_IMAGE_VERSION" \
   --no-staging \
   --require-approval never \
   --concurrency 10 \

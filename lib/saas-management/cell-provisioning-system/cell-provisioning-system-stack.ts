@@ -1,5 +1,5 @@
-import {CfnOutput, Stack, StackProps, RemovalPolicy, Fn} from 'aws-cdk-lib';
-import { IntegrationPattern,JsonPath, Pass, Fail, Choice, Succeed, Condition, StateMachine, DefinitionBody, LogLevel } from 'aws-cdk-lib/aws-stepfunctions';
+import { CfnOutput, Stack, StackProps, RemovalPolicy, Fn } from 'aws-cdk-lib';
+import { IntegrationPattern,JsonPath, Fail, Succeed, StateMachine, DefinitionBody, LogLevel } from 'aws-cdk-lib/aws-stepfunctions';
 import { CodeBuildStartBuild, LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Project, BuildSpec, Source, ComputeType, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
@@ -16,16 +16,16 @@ import { AppPlaneStaggeredDeploymentsConstruct } from './app-plane-staggered-dep
 import { Construct } from 'constructs';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 
-export interface AppPlaneOrchestratorInterface extends StackProps {
+export interface CellProvisioningSystemProps extends StackProps {
   orchestrationBus: events.EventBus;
   cellManagementTable: Table;
   s3LoggingBucketArn: string;
   s3CellSourceBucketArn: string;
 }
 
-export class AppPlaneOrchestratorStack extends Stack {
+export class CellProvisioningSystem extends Stack {
 
-  constructor(scope: Construct, id: string, props: AppPlaneOrchestratorInterface) {
+  constructor(scope: Construct, id: string, props: CellProvisioningSystemProps) {
     super(scope, id, props);
 
     // Handle CDK nag suppressions.
@@ -250,8 +250,8 @@ export class AppPlaneOrchestratorStack extends Stack {
     }));
 
     // Define success and failure states
-    const buildSucceeded = new Succeed(this, 'Build Succeeded');
-    const buildFailed = new Fail(this, 'Build Failed', {
+    const buildSucceeded = new Succeed(this, 'Cell Creation Succeeded');
+    const buildFailed = new Fail(this, 'Cell Creation Failed', {
       cause: 'CodeBuild build failed',
     });
 
@@ -259,7 +259,7 @@ export class AppPlaneOrchestratorStack extends Stack {
     const persistCellDetailsLambda = new LambdaFunction(this, 'PersistCellDetails', {
       friendlyFunctionName: 'PersistCellDetailsFunction',
       index: 'persistCellDetails.py',
-      entry: 'lib/saas-management/app-plane-orchestrator/src/lambdas/persistCellDetails', 
+      entry: 'lib/saas-management/cell-provisioning-system/src/lambdas/persistCellDetails', 
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_BUS': props.orchestrationBus.eventBusName}
     });
@@ -279,7 +279,7 @@ export class AppPlaneOrchestratorStack extends Stack {
     });
 
     // Create a Step Function task to start the CodeBuild project
-    const startBuildTask = new CodeBuildStartBuild(this, 'StartBuild', {
+    const startBuildTask = new CodeBuildStartBuild(this, 'StartCellCreation', {
       project: cellCodebuildProject,
       integrationPattern: IntegrationPattern.RUN_JOB,
       environmentVariablesOverride: {
@@ -412,7 +412,7 @@ export class AppPlaneOrchestratorStack extends Stack {
     const persistTenantDetailsLambda = new LambdaFunction(this, 'PersistTenantDetails', {
       friendlyFunctionName: 'PersistTenantDetailsFunction',
       index: 'persistTenantDetails.py',
-      entry: 'lib/saas-management/app-plane-orchestrator/src/lambdas/persistTenantDetails',
+      entry: 'lib/saas-management/cell-provisioning-system/src/lambdas/persistTenantDetails',
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_BUS': props.orchestrationBus.eventBusName}
     });
@@ -432,13 +432,13 @@ export class AppPlaneOrchestratorStack extends Stack {
     });
 
     // Define success and failure states
-    const tenantBuildSucceeded = new Succeed(this, 'Tenant Build Succeeded');
-    const tenantBuildFailed = new Fail(this, 'Tenant Build Failed', {
+    const tenantBuildSucceeded = new Succeed(this, 'Tenant Creation Succeeded');
+    const tenantBuildFailed = new Fail(this, 'Tenant Creation Failed', {
       cause: 'CodeBuild build failed',
     });
 
     // Create a Step Function task to start the CodeBuild project
-    const startTenantBuildTask = new CodeBuildStartBuild(this, 'startTenantBuildTask', {
+    const startTenantBuildTask = new CodeBuildStartBuild(this, 'StartTenantCreation', {
       project: tenantMgtCodeBuild,
       integrationPattern: IntegrationPattern.RUN_JOB,
       environmentVariablesOverride: {

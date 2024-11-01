@@ -24,23 +24,23 @@ import { IdentityProvider } from './identity-provider-construct';
 import { LambdaFunction  } from '../src/lambda-function-construct';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 
-export interface ControlPlaneStackProps extends StackProps
+export interface CellManagementSystemStackProps extends StackProps
 {
   readonly s3ConfigBucketName: string;
   readonly eventBusArn: string;
   readonly versionSsmParameter: ssm.StringParameter;
 }
 
-export class ControlPlaneStack extends Stack {
+export class CellManagementSystem extends Stack {
   readonly cellManagementTable: dynamodb.Table;
 
-  constructor(scope: Construct, id: string, props: ControlPlaneStackProps) {
+  constructor(scope: Construct, id: string, props: CellManagementSystemStackProps) {
     super(scope, id, props);
 
     // Handle CDK nag suppressions.
     CdkNagUtils.suppressCDKNag(this);
 
-    Tags.of(this).add('SaaSApplicationService', 'ControlPlane');
+    Tags.of(this).add('SaaSApplicationService', 'CellManagementSystem');
 
     const identityProvider = new IdentityProvider(this, 'IdentityProvider');
     const idpDetails = identityProvider.identityDetails;
@@ -51,7 +51,7 @@ export class ControlPlaneStack extends Stack {
     const authorizerLambda = new LambdaFunction(this, 'AuthorizerLambda', {
       friendlyFunctionName: 'AuthorizerFunction',
       index: 'controlPlaneAuthorizer.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/Authorizer', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/Authorizer', 
       handler: 'handler',         
       environmentVariables: {'IDP_DETAILS': JSON.stringify(idpDetails)}
     });
@@ -90,7 +90,7 @@ export class ControlPlaneStack extends Stack {
     /**
      * The API Gateway API for the control plane operations
      */
-    const api = new RestApi(this, 'ControlPlaneApi', {
+    const api = new RestApi(this, 'CellManagementApi', {
       deployOptions: {
         stageName: 'prod',
         loggingLevel: MethodLoggingLevel.ERROR,
@@ -105,9 +105,8 @@ export class ControlPlaneStack extends Stack {
         authorizationType: AuthorizationType.CUSTOM,
         authorizer: tokenAuthorizer,
       },
+      cloudWatchRole: true
     });
-
-    const controlPlaneApi = api.root.addResource("CellControlPlaneApi")
 
     /**
      * Start of createCell method and associated resources
@@ -139,7 +138,7 @@ export class ControlPlaneStack extends Stack {
     const createCellLambda = new LambdaFunction(this, 'CreateCellFunction', {
       friendlyFunctionName: 'CreateCellFunction',
       index: 'createCell.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/CreateCell', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/CreateCell', 
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn,
                              'CELL_MANAGEMENT_BUS': cellManagementBus.eventBusName}
@@ -147,7 +146,8 @@ export class ControlPlaneStack extends Stack {
     cellManagementTable.grantReadWriteData(createCellLambda.lambdaFunction);
     cellManagementBus.grantPutEventsTo(createCellLambda.lambdaFunction);
 
-    const createCellResource = controlPlaneApi.addResource("CreateCell");
+    const createCellResource = api.root.addResource("CreateCell");
+    
     createCellResource.addCorsPreflight({
       allowOrigins: ['*'],
         allowMethods: ['POST', 'OPTIONS'],
@@ -182,13 +182,14 @@ export class ControlPlaneStack extends Stack {
     const listCellsLambda = new LambdaFunction(this, 'ListCellsFunction', {
       friendlyFunctionName: 'ListCellsFunction',
       index: 'listCells.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/ListCells', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/ListCells', 
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn}  
     });
     cellManagementTable.grantReadData(listCellsLambda.lambdaFunction);
     
-    const listCellsResource = controlPlaneApi.addResource("ListCells");
+    const listCellsResource = api.root.addResource("ListCells");
+
     listCellsResource.addCorsPreflight({
       allowOrigins: ['*'],
       allowMethods: ['GET', 'OPTIONS'],
@@ -219,26 +220,12 @@ export class ControlPlaneStack extends Stack {
     /**
      * Start of describeCell method and associated resources
      */
-    const describeCellRequestByCellIdModel = api.addModel('DescribeCellRequestByCellIdModel', {
-      contentType: 'application/json',
-      schema: {
-        schema: JsonSchemaVersion.DRAFT7,
-        title: 'Describe Cell Request by CellId Data Model',
-        type: JsonSchemaType.OBJECT,
-        properties: {
-          CellId: {
-            type: JsonSchemaType.STRING,
-          }
-        },
-        required: ['CellId'],
-      },
-    });
-
+    
     // Lambda function that processes requests from API Gateway to Describe an existing Cell
     const describeCellLambda = new LambdaFunction(this, 'DescribeCellFunction', {
       friendlyFunctionName: 'DescribeCellFunction',
       index: 'describeCell.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/DescribeCell', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/DescribeCell', 
       handler: 'handler',      
       environmentVariables: {
         'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn
@@ -246,7 +233,8 @@ export class ControlPlaneStack extends Stack {
     })
     cellManagementTable.grantReadData(describeCellLambda.lambdaFunction); 
 
-    const describeCellResource = controlPlaneApi.addResource("DescribeCell");
+    const describeCellResource = api.root.addResource("DescribeCell");
+
     describeCellResource.addCorsPreflight({
       allowOrigins: ['*'],
         allowMethods: ['GET', 'OPTIONS'],
@@ -306,14 +294,14 @@ export class ControlPlaneStack extends Stack {
     const updateCellLambda = new LambdaFunction(this, 'UpdateCellFunction', {
       friendlyFunctionName: 'UpdateCellFunction',
       index: 'updateCell.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/UpdateCell', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/UpdateCell', 
       handler: 'handler',        
       environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn}
     });
 
     cellManagementTable.grantWriteData(updateCellLambda.lambdaFunction);
     
-    const updateCellResource = controlPlaneApi.addResource("UpdateCell");
+    const updateCellResource = api.root.addResource("UpdateCell");
     updateCellResource.addCorsPreflight({
       allowOrigins: ['*'],
         allowMethods: ['PUT', 'OPTIONS'],
@@ -375,7 +363,7 @@ export class ControlPlaneStack extends Stack {
     const assignTenantToCellLambda = new LambdaFunction(this, 'AssignTenantToCellFunction', {
       friendlyFunctionName: 'AssignTenantToCell',
       index: 'assignTenantToCell.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/AssignTenantToCell', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/AssignTenantToCell', 
       handler: 'handler', 
       environmentVariables: {
         CELL_MANAGEMENT_TABLE: cellManagementTable.tableArn,
@@ -394,7 +382,7 @@ export class ControlPlaneStack extends Stack {
      assignTenantToCellLambda.lambdaFunction.addToRolePolicy(policyStatement);
 
     // Create a resource
-    const assignTenantToCellResource = controlPlaneApi.addResource('AssignTenantToCell');
+    const assignTenantToCellResource = api.root.addResource('AssignTenantToCell');
     assignTenantToCellResource.addCorsPreflight({
       allowOrigins: ['*'],
         allowMethods: ['POST', 'OPTIONS'],
@@ -426,6 +414,54 @@ export class ControlPlaneStack extends Stack {
     );
 
     /**
+     * Start of describeTenant method and associated resources
+     */    
+    // Lambda function that processes requests from API Gateway to Describe an existing Cell
+    const describeTenantLambda = new LambdaFunction(this, 'DescribeTenantFunction', {
+      friendlyFunctionName: 'DescribeTenantFunction',
+      index: 'describeTenant.py',
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/DescribeTenant', 
+      handler: 'handler',      
+      environmentVariables: {
+        'TENANT_MANAGEMENT_TABLE': cellManagementTable.tableArn
+      }
+    })
+    cellManagementTable.grantReadData(describeTenantLambda.lambdaFunction); 
+
+    const describeTenantResource = api.root.addResource("DescribeTenant");
+
+    describeTenantResource.addCorsPreflight({
+      allowOrigins: ['*'],
+        allowMethods: ['GET', 'OPTIONS'],
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+          'X-Amz-User-Agent',
+        ],
+    })
+
+    // Create a method and associate the request model for describe cell
+    const describeTenantMethod = describeTenantResource.addMethod(
+      'GET',
+      new LambdaIntegration(describeTenantLambda.lambdaFunction),
+      {
+        requestParameters: {
+          'method.request.querystring.CellId': true,
+          'method.request.querystring.TenantId': true,
+        },
+        requestValidatorOptions: {
+          validateRequestBody: false,
+          validateRequestParameters: true,
+        },
+        authorizationType: AuthorizationType.CUSTOM,
+        authorizer: tokenAuthorizer,
+      }
+    );
+
+    /**
      * Start of deactivateTenant method and associated resources
      */
     const deactivateTenantRequestModel = api.addModel('DeactivateTenantRequestModel', {
@@ -447,7 +483,7 @@ export class ControlPlaneStack extends Stack {
     const deactivateTenantLambda = new LambdaFunction(this, 'DeactivateTenantFunction', {
       friendlyFunctionName: 'DeactivateTenant',
       index: 'deactivateTenant.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/DeactivateTenant', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/DeactivateTenant', 
       handler: 'handler', 
       environmentVariables: {
         "S3_BUCKET_NAME": s3ConfigBucket.bucketName,
@@ -457,7 +493,7 @@ export class ControlPlaneStack extends Stack {
     s3ConfigBucket.grantReadWrite(deactivateTenantLambda.lambdaFunction);
 
     // Create a resource
-    const deactivateTenantResource = controlPlaneApi.addResource('DeactivateTenant');
+    const deactivateTenantResource = api.root.addResource('DeactivateTenant');
     deactivateTenantResource.addCorsPreflight({
       allowOrigins: ['*'],
         allowMethods: ['PUT', 'OPTIONS'],
@@ -513,7 +549,7 @@ export class ControlPlaneStack extends Stack {
     const activateTenantLambda = new LambdaFunction(this, 'ActivateTenantFunction', {
       friendlyFunctionName: 'ActivateTenant',
       index: 'activateTenant.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/ActivateTenant', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/ActivateTenant', 
       handler: 'handler', 
       environmentVariables: {
         S3_BUCKET_NAME: s3ConfigBucket.bucketName,
@@ -525,7 +561,7 @@ export class ControlPlaneStack extends Stack {
     cellManagementTable.grantReadData(activateTenantLambda.lambdaFunction);
 
     // Create a resource
-    const activateTenantResource = controlPlaneApi.addResource('ActivateTenant');
+    const activateTenantResource = api.root.addResource('ActivateTenant');
     activateTenantResource.addCorsPreflight({
       allowOrigins: ['*'],
       allowMethods: ['PUT', 'OPTIONS'],
@@ -560,7 +596,7 @@ export class ControlPlaneStack extends Stack {
     const persistCellMetadataLambda = new LambdaFunction(this, 'PersistCellMetadataFunction', {
       friendlyFunctionName: 'PersistCellMetadataFunction',
       index: 'persistCellMetadata.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/PersistCellMetadata', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/PersistCellMetadata', 
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn}
     });
@@ -580,13 +616,13 @@ export class ControlPlaneStack extends Stack {
     persistCellMetadataRule.addTarget(new targets.LambdaFunction(persistCellMetadataLambda.lambdaFunction));
 
     /**
-     * STart of Persist Tenant
+     * Start of Persist Tenant
      */
     // Lambda function that processes requests from API Gateway to create a new Cell
     const persistTenantMetadataLambda = new LambdaFunction(this, 'PersistTenantMetadataFunction', {
       friendlyFunctionName: 'PersistTenantMetadataFunction',
       index: 'persistTenantMetadata.py',
-      entry: 'lib/saas-management/control-plane/src/lambdas/PersistTenantMetadata', 
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/PersistTenantMetadata', 
       handler: 'handler',
       environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn}
     });

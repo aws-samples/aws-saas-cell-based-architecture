@@ -12,7 +12,7 @@ cd $APP_PLANE_ARCHIVE_DIR/cell-app-plane
 zip -r ../$APP_PLANE_ARCHIVE_FILENAME . -x ".git/*" -x "**/node_modules/*" -x "**/cdk.out/*"
 
 cd $CURRENT_DIR
-BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name BridgeStack --query "Stacks[0].Outputs[?OutputKey=='S3SourceBucketName'].OutputValue" | jq -r '.[0]')
+BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name Bridge --query "Stacks[0].Outputs[?OutputKey=='S3SourceBucketName'].OutputValue" | jq -r '.[0]')
 ZIP_FILE_NAME=$(aws s3api list-objects --bucket $BUCKET_NAME | jq -r '.Contents[0].Key')
 echo "Current Directory: ${PWD}"
 echo "Uploading $APP_PLANE_ARCHIVE_DIR/$APP_PLANE_ARCHIVE_FILENAME to $BUCKET_NAME"

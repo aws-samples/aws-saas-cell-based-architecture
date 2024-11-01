@@ -10,23 +10,23 @@ This GitHub repository contains the supporting code for this workshop. The works
 
 2. Run the below script to create a new cell. Here 'freetier' is the name of cell, 'S' is cellSize (allowed values are S,M,L) and '1' is the WaveNumber for the cell deployment.
 
-`sh ./lib/saas-management/control-plane/scripts/test_createcell.sh freetier S 1`
+`sh ./scripts/test_createcell.sh freetier S 1`
 
 3. Run the below script to create a new tenant within the cell. Here 'o2345v9' is the cell id (from previous step), 'tenant1' is tenant name and 'test@test.com' is the email for the tenant admin, that is provisioned in Cognito as part of this and 'free' denotes tenant tiers.
 
-`sh ./lib/saas-management/control-plane/scripts/test_createtenant.sh o2345v9 tenant1 test@test.com free`
+`sh ./scripts/test_createtenant.sh o2345v9 tenant1 test@test.com free`
 
 4. Run the below script to activate the tenant. Here 'o2345v9' is the cell id (from create cell step), 'mhmuy9t2p' is tenant id (from create tenant step).
 
-`sh ./lib/saas-management/control-plane/scripts/test_activatetenant.sh o2345v9 mhmuy9t2p`
+`sh ./scripts/test_activatetenant.sh o2345v9 mhmuy9t2p`
 
 5. Run the below script to add and get products for the tenant. Pass the cell id and tenant id. The below will script will use the cell router to route to the correct cell endpoint.
 
-`./lib/application-plane/cell-app-plane/scripts/test.sh o2345v9 mhmuy9t2p`
+`sh ./scripts/test_product.sh o2345v9 mhmuy9t2p`
 
 6. If you make any changes to the docker image then run below command to re-upload the app plane source. This will trigger the deployment pipeline.
 
-`./scripts/package-app-plane.sh`
+`sh ./scripts/package-app-plane.sh`
 
 
 ## Security

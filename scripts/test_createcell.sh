@@ -22,10 +22,10 @@ WAVE_NUMBER=$3
 
 echo "Deploying Cell $CELL_NAME with Size $CELL_SIZE"
 
-CONTROL_PLANE_STACK_NAME="ControlPlaneStack"
+CELL_MANAGEMENT_STACK_NAME="CellManagementSystem"
 
-USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $CONTROL_PLANE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" | jq -r '.[0]')
-CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $CONTROL_PLANE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" | jq -r '.[0]')
+USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $CELL_MANAGEMENT_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" | jq -r '.[0]')
+CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $CELL_MANAGEMENT_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" | jq -r '.[0]')
 
 USER="admin"
 PASSWORD="#CellBased1234"
@@ -73,16 +73,14 @@ ID_TOKEN=$(echo "$AUTHENTICATION_RESULT" | jq -r '.IdToken')
 echo "ID_TOKEN: ${ID_TOKEN}"
 
 
-CONTROL_PLANE_API_ENDPOINT=$(aws cloudformation describe-stacks \
-    --stack-name "$CONTROL_PLANE_STACK_NAME" \
-    --query "Stacks[0].Outputs[?contains(OutputKey,'ControlPlaneApiEndpoint')].OutputValue" \
+CELL_MANAGEMENT_API_ENDPOINT=$(aws cloudformation describe-stacks \
+    --stack-name "$CELL_MANAGEMENT_STACK_NAME" \
+    --query "Stacks[0].Outputs[?contains(OutputKey,'CellManagementApiEndpoint')].OutputValue" \
     --output text)
-echo "CONTROL_PLANE_API_ENDPOINT: ${CONTROL_PLANE_API_ENDPOINT}"
-
-# echo "creating cell..."
+echo "CELL_MANAGEMENT_API_ENDPOINT: ${CELL_MANAGEMENT_API_ENDPOINT}"
 
 CELL_ID=$(curl --request POST \
-    --url "${CONTROL_PLANE_API_ENDPOINT}CellControlPlaneApi/CreateCell" \
+    --url "${CELL_MANAGEMENT_API_ENDPOINT}CreateCell" \
     --header "Authorization: Bearer ${ID_TOKEN}" \
     --header 'content-type: application/json' \
     --data "{\"CellName\":\"$CELL_NAME\",\"CellSize\":\"$CELL_SIZE\",\"WaveNumber\": $WAVE_NUMBER}" \
@@ -90,24 +88,21 @@ CELL_ID=$(curl --request POST \
 
 echo "CELL ID: ${CELL_ID}"
 
+# making cell id available to the next script
+echo $CELL_ID > cell_id.txt
+
 echo "Waiting for Cell to be created"
 sleep 10
 
-CELL_STATUS=$(curl --request GET \
-        --url "${CONTROL_PLANE_API_ENDPOINT}CellControlPlaneApi/DescribeCell?CellId=${CELL_ID}" \
-        --header "Authorization: Bearer ${ID_TOKEN}" \
-        --header 'Accept: application/json' \
-        | jq -r '.Status')
+CELL_STATUS="creating"
 
-while [ "$CELL_STATUS" != "available" ]
+while [[ "$CELL_STATUS" != "available" && "$CELL_STATUS" != "failed" ]]
 do
     sleep 30
-    CELL_STATUS=$(curl --request GET \
-        --url "${CONTROL_PLANE_API_ENDPOINT}CellControlPlaneApi/DescribeCell?CellId=${CELL_ID}" \
+    CELL_STATUS=$(curl -s --request GET \
+        --url "${CELL_MANAGEMENT_API_ENDPOINT}DescribeCell?CellId=${CELL_ID}" \
         --header "Authorization: Bearer ${ID_TOKEN}" \
         --header 'Accept: application/json' \
         | jq -r '.Status')
-    echo "Cell is now ${CELL_STATUS}"
+    echo "Cell ${CELL_ID}, status ${CELL_STATUS}"
 done
-
-echo "Cell is now ${CELL_STATUS}"

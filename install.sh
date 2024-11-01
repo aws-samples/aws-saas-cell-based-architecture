@@ -2,8 +2,6 @@
 
 EMAIL="user@awssaascellworkshop.com"
 
-#need the empty file for the build to pass. We recreate this file during package step later
-touch lib/application-plane/cell-app-plane.zip
 
 # Deploy the solution
 ./scripts/deploy.sh

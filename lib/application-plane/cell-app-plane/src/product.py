@@ -8,6 +8,16 @@ import json
 import logging
 from jose import jwk, jwt
 from jose.utils import base64url_decode
+import string
+import random
+
+#A function that created a 1MB dummy log entry. This log entry will be used to simulate the failure of logging to Amazon CloudWatch. The 1MB will fill up the logging buffer very fast. 
+def generate_large_log_entry(size_mb=1):
+    """Generate a string of approximately size_mb megabytes"""
+    # 1 MB = 1048576 bytes
+    # Using ASCII letters for the content
+    chars = string.ascii_letters + string.digits
+    return ''.join(random.choice(chars) for _ in range(1048576))
 
 secrets_manager = boto3.client('secretsmanager', region_name=os.environ['AWS_REGION'])
 
@@ -65,7 +75,12 @@ def health_check():
 def create_product():
     connection = None
     try:
-        app.logger.info (request.headers)        
+        # Generate and log 1MB entry
+        large_log = generate_large_log_entry()
+        app.logger.info(f"Large log entry: {large_log}")
+        
+        app.logger.info (request.headers)  
+        app.logger.info ("This is a new deployment of the application")
         #tenant_id = request.headers.get('tenantId')
         tenant_id = get_tenant_id(request)
         app.logger.info(tenant_id)

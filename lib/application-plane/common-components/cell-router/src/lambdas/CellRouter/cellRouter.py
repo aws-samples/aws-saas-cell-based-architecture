@@ -23,6 +23,15 @@ s3 = boto3.session.Session().client(
     config=Config(tcp_keepalive=True,retries={'mode': 'adaptive'})
 )
 
+class ConfigError(ValueError):
+    '''Raise when an unexpected router config error is encountered'''
+
+class ConfigAccessError(ValueError):
+    '''Raise when router config can't be accessed'''
+
+class ConfigFormatError(ValueError):
+    '''Raise when router config is invalid or malformed'''
+
 def lambda_handler(event, context):
     """
     AWS Lambda function handler for routing incoming requests based on tenant ID.
@@ -52,11 +61,11 @@ def lambda_handler(event, context):
         authorization = request['headers'].get('authorization')[0].get('value')
         print('Tenant ID:', tenantId)
         try:
-            configMap = getConfigMap()
+            configMap = get_config_map()
             if tenantId in configMap:
                 cell_url = configMap[tenantId]
                 cell_url_components = urlparse(cell_url)
-        except Exception as e:
+        except (Exception,ConfigError) as e:
             print(f'Unexpected Error retrieving or parsing config object: {e}')
         else:
             request['origin'] = {
@@ -113,68 +122,134 @@ def lambda_handler(event, context):
         }
         return response
 
-def getConfigMap():
+def get_config_map():
     """
-    Retrieves a configuration object from an Amazon S3 bucket and caches it in memory.
+    Retrieves and caches a configuration object from an Amazon S3 bucket.
 
-    This function checks if the configuration object is already cached in memory and if the cached
-    object has not expired based on a predefined cache threshold (CACHE_THRESHOLD). If the cached
-    object is not available or has expired, it fetches the configuration object from an Amazon S3
-    bucket specified by the BUCKET_NAME and OBJECT_KEY constants.
+    This function implements a caching mechanism for the configuration object. It checks if the 
+    configuration is already cached and not expired. If the cache is invalid or expired, it fetches 
+    a new configuration from S3.
 
-    The configuration object is expected to be a JSON file. The function reads the object content
-    from S3, parses the JSON data, and stores it in the global mapping_data variable. It also updates
-    the last_updated_timestamp global variable with the current time in milliseconds.
-
-    If an error occurs during the retrieval or parsing of the configuration object, the function
-    prints an error message with the exception details.
+    The function uses the following logic:
+    1. If there's no cached data or it has expired, attempt to fetch from S3.
+    2. If fetching fails and there's no cached data, raise an error.
+    3. If fetching fails but there's expired cached data, return the expired data.
+    4. If the cache is valid and not expired, return the cached data.
 
     Returns:
-        dict: The parsed configuration object as a Python dictionary.
+        dict: The configuration object as a Python dictionary, either freshly fetched or from cache.
 
     Raises:
-        ClientError: If an error occurs while retrieving the object from Amazon S3.
-        json.JSONDecodeError: If an error occurs while parsing the JSON data.
-        Exception: If an unexpected error occurs during the retrieval or parsing process.
+        ConfigError: If there's no cached data and fetching from S3 fails.
 
     Global Variables:
         mapping_data (dict): Stores the parsed configuration object.
-        last_updated_timestamp (int): Stores the timestamp (in milliseconds) when the configuration
-            object was last updated.
-    """
+        last_updated_timestamp (int): Stores the timestamp (in milliseconds) of the last update.
+        CACHE_THRESHOLD (int): The cache expiration time in milliseconds.
 
+    Note:
+        This function relies on the `get_versioned_json_from_s3()` function to fetch data from S3.
+        It handles ConfigAccessError, ConfigFormatError, and ConfigError exceptions from that function.
+
+    Example:
+        try:
+            config = get_config_map()
+            # Use the config...
+        except ConfigError as e:
+            print(f"Failed to get configuration: {e}")
+    """
     global mapping_data, last_updated_timestamp
     current_time = round(time.time() * 1000)
     
     # if the variables have not been initialised, or they haven't been fetched in a while...
     if mapping_data is None or last_updated_timestamp is None or ((current_time - last_updated_timestamp) > CACHE_THRESHOLD):
 
+        # This is the high risk scenario... we have no previously known good version in memory to fall back on...
         if mapping_data is None or last_updated_timestamp is None:
-            print('No cached config object, fetching from S3')
+            print('No cached config object, so fetching from S3')
+            try:
+                mapping_data = get_versioned_json_from_s3()
+                last_updated_timestamp = current_time
+                print('Successfully fetched and cached config object')
+                return mapping_data
+            except ConfigAccessError as cae:
+                print(f'Error retrieving config object: {cae}')
+                raise ConfigError('A problem occured loading Routing configuration')
+            except ConfigFormatError as cfe:
+                print(f'Error parsing config object: {cfe}')
+                raise ConfigError('A problem occured parsing Routing configuration')
+            except ConfigError as ce:
+                print(f'Unexpected Error retrieving or parsing config object: {ce}')
+                raise ConfigError('A problem occured retrieving and validating the Routing configuration')
         elif (current_time - last_updated_timestamp) > CACHE_THRESHOLD:
-            print('Cached config object has expired, fetching from S3')
-
-        # We replace the global variables only if everything works in this block...
-        try:
-            print('Fetching config object from S3')
-            # Get the object from S3
-            response = s3.get_object(Bucket=BUCKET_NAME, Key=OBJECT_KEY)
-
-            # Read and decode the object content
-            object_content = response['Body'].read().decode('utf-8')
-            
-            # Parse the JSON and store it in the global variable
-            mapping_data = json.loads(object_content)
-
-            # Set the last updated timestamp to the current time in millis
-            last_updated_timestamp = current_time
-
-        except ClientError as e:
-            print(f'Error retrieving config object: {e}')
-        except json.JSONDecodeError as e:
-            print(f'Error parsing config object: {e}')
-        except Exception as e:
-            print(f'Unexpected Error retrieving or parsing config object: {e}')
+            print('Cached config object has expired, so fetching from S3')
+            try:
+                mapping_data = get_versioned_json_from_s3()
+                last_updated_timestamp = current_time
+                print('Successfully fetched and cached config object')
+                return mapping_data
+            except ConfigAccessError as cae:
+                print(f'Error retrieving config object: {cae}')
+                print(f"returning the previous known good version of the router configuration")
+                return mapping_data
+            except ConfigFormatError as cfe:
+                print(f'Error parsing config object: {cfe}')
+                print(f"returning the previous known good version of the router configuration")
+                return mapping_data
+            except ConfigError as ce:
+                print(f'Unexpected Error retrieving or parsing config object: {ce}')
+                print(f"returning the previous known good version of the router configuration")
+                return mapping_data
     else:
         print('Using cached config object')
-    return mapping_data
+        return mapping_data
+
+def get_versioned_json_from_s3():
+    """
+    Retrieves and parses a JSON configuration object from an S3 bucket.
+
+    This function attempts to fetch a JSON object from a specified S3 bucket and key,
+    decode its contents, and parse it as JSON. It includes error handling for various
+    potential issues that may occur during this process.
+
+    Returns:
+        dict: The parsed JSON data as a Python dictionary.
+
+    Raises:
+        ConfigAccessError: If there's an issue accessing the S3 bucket or object.
+        ConfigFormatError: If the retrieved object cannot be parsed as valid JSON.
+        ConfigError: For any other unexpected errors during retrieval or parsing.
+
+    Note:
+        This function assumes that the following global variables are defined:
+        - s3: A boto3 S3 client
+        - BUCKET_NAME: The name of the S3 bucket containing the config object
+        - OBJECT_KEY: The key (path) of the config object within the bucket
+
+    Example:
+        try:
+            config = get_versioned_json_from_s3()
+            # Use the config...
+        except (ConfigAccessError, ConfigFormatError, ConfigError) as e:
+            print(f"Configuration error: {e}")
+    """
+    try:
+        print('Fetching config object from S3')
+        # Get the object from S3
+        response = s3.get_object(Bucket=BUCKET_NAME, Key=OBJECT_KEY)
+
+        # Read and decode the object content
+        object_content = response['Body'].read().decode('utf-8')
+        
+        # Parse the JSON
+        mapping_data = json.loads(object_content)
+        return mapping_data
+    except ClientError as ce:
+        print(f'Error retrieving config object: {ce}')
+        raise ConfigAccessError('A problem occured accessing Routing config')
+    except json.JSONDecodeError as jde:
+        print(f'Error parsing config object: {jde}')
+        raise ConfigFormatError('The Routing config is invalid')
+    except Exception as e:
+        print(f'Unexpected Error retrieving or parsing config object: {e}')
+        raise ConfigError('An unexpected problem occurred retrieving and parsing the Routing config')

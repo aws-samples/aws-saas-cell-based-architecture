@@ -17,4 +17,4 @@ TENANT_ID=$(cat tenant_id.txt)
 echo "Tenant ID: $TENANT_ID"
 
 # Activate the tenant
-./scripts/test_activatetenant.sh $CELL_ID $TENANT_ID
+# ./scripts/test_activatetenant.sh $CELL_ID $TENANT_ID

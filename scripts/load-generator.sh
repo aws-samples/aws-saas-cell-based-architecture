@@ -77,7 +77,7 @@ export ID_TOKEN_CELL=$(aws cognito-idp initiate-auth \--auth-flow USER_PASSWORD_
 echo -e "${GREEN}Login complete${NC}"
 
 #retrieve the cell router cloudfront distribution url
-export DISTRIBUTION_URL=$(aws cloudformation describe-stacks --stack-name CellRouterStack --query "Stacks[0].Outputs[?starts_with(OutputKey, 'DistributionUrl')].OutputValue" --output text)
+export DISTRIBUTION_URL=$(aws cloudformation describe-stacks --stack-name CellRouter --query "Stacks[0].Outputs[?starts_with(OutputKey, 'DistributionUrl')].OutputValue" --output text)
 echo -e "${YELLOW}The cell Distribution URL: ${DISTRIBUTION_URL}${NC}"
 
 # Function to make the API call

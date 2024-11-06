@@ -25,8 +25,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         *)
-            echo -e "${RED}Unknown parameter: $1${NC}"
-            echo -e "${YELLOW}Usage: $0 --cell-id <cell_id> --tenant-id <tenant_id> --duration <seconds>${NC}"
+            echo "${RED}Unknown parameter: $1${NC}"
+            echo "${YELLOW}Usage: $0 --cell-id <cell_id> --tenant-id <tenant_id> --duration <seconds>${NC}"
             exit 1
             ;;
     esac
@@ -43,8 +43,8 @@ fi
 
 # If any mandatory parameters are missing, show error and exit
 if [ ${#missing_params[@]} -ne 0 ]; then
-    echo -e "${RED}Error: Missing required parameters: ${missing_params[*]}${NC}"
-    echo -e "${YELLOW}Usage: $0 --cell-id <cell_id> --tenant-id <tenant_id> --duration <seconds>${NC}"
+    echo "${RED}Error: Missing required parameters: ${missing_params[*]}${NC}"
+    echo "${YELLOW}Usage: $0 --cell-id <cell_id> --tenant-id <tenant_id> --duration <seconds>${NC}"
     exit 1
 fi
 
@@ -52,10 +52,10 @@ fi
 DURATION=${DURATION:-$DEFAULT_DURATION}
 
 # Display the configuration
-echo -e "${YELLOW}Running with configuration:${NC}"
-echo -e "${GREEN}Cell ID: ${CELL_ID}${NC}"
-echo -e "${GREEN}Tenant ID: ${TENANT_ID}${NC}"
-echo -e "${GREEN}Duration: ${DURATION} seconds${NC}"
+echo "${YELLOW}Running with configuration:${NC}"
+echo "${GREEN}Cell ID: ${CELL_ID}${NC}"
+echo "${GREEN}Tenant ID: ${TENANT_ID}${NC}"
+echo "${GREEN}Duration: ${DURATION} seconds${NC}"
 
 
 # Prepare login
@@ -74,41 +74,64 @@ export ID_TOKEN_CELL=$(aws cognito-idp initiate-auth \--auth-flow USER_PASSWORD_
 --query 'AuthenticationResult' | jq -r '.IdToken')
 
 #Confirm that login is complete
-echo -e "${GREEN}Login complete${NC}"
+echo "${GREEN}Login complete${NC}"
 
 #retrieve the cell router cloudfront distribution url
-export DISTRIBUTION_URL=$(aws cloudformation describe-stacks --stack-name CellRouterStack --query "Stacks[0].Outputs[?starts_with(OutputKey, 'DistributionUrl')].OutputValue" --output text)
-echo -e "${YELLOW}The cell Distribution URL: ${DISTRIBUTION_URL}${NC}"
+export DISTRIBUTION_URL=$(aws cloudformation describe-stacks --stack-name CellRouter --query "Stacks[0].Outputs[?starts_with(OutputKey, 'DistributionUrl')].OutputValue" --output text)
+echo "${YELLOW}The cell Distribution URL: ${DISTRIBUTION_URL}${NC}"
 
 # Function to make the API call
 make_request() {
-local timestamp=$(date +%s | tail -c 7)
+    local timestamp=$(date +%s | tail -c 7)
     local random=$((RANDOM % 1000))
     # Combine them ensuring it stays within PostgreSQL integer max value (2147483647)
     local product_id=$((timestamp * 1000 + random))
-    curl -s -X POST \
+    local response=$(curl -s -w "\n%{http_code}" -X POST \
         --url "https://${DISTRIBUTION_URL}/product" \
         -H "content-type: application/json" \
         -H "Authorization: Bearer $ID_TOKEN_CELL" \
         -H "tenantId: ${TENANT_ID}" \
-        -d "{\"productId\":\"${product_id}\",\"productName\":\"p${product_id}\",\"productDescription\":\"p${product_id}desc\",\"productPrice\":\"10\"}"
+        -d "{\"productId\":\"${product_id}\",\"productName\":\"p${product_id}\",\"productDescription\":\"p${product_id}desc\",\"productPrice\":\"10\"}")
+    
+    local http_code=$(echo "$response" | tail -n1)
+    echo "$http_code"
 }
 
 # Calculate end time
 END_TIME=$(($(date +%s) + DURATION))
 
-# Counter for requests
-counter=1
+# Counters
+success_count=0
+failed_4xx_count=0
+failed_5xx_count=0
+last_success_time=""
+last_failed_time=""
 
 # Main loop
 while [ $(date +%s) -lt $END_TIME ]; do
-    make_request
-    echo -e "${GREEN}Request $counter sent at $(date '+%H:%M:%S')${NC}"
-
+    http_code=$(make_request)
+    current_time=$(date '+%H:%M:%S')
     
-    ((counter++))
+    if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+        ((success_count++))
+        last_success_time=$current_time
+    elif [ "$http_code" -ge 400 ] && [ "$http_code" -lt 500 ]; then
+        ((failed_4xx_count++))
+        last_failed_time=$current_time
+    elif [ "$http_code" -ge 500 ]; then
+        ((failed_5xx_count++))
+        last_failed_time=$current_time
+    fi
+
+    # Overwrite the existing line with updated counters
+    echo -ne "\r${GREEN}Success: $success_count | ${YELLOW}4XX: $failed_4xx_count | ${RED}5XX: $failed_5xx_count | ${NC}Last Success: $last_success_time | Last Fail: $last_failed_time"
 done
 
-echo -e "${YELLOW}Script completed. Total requests sent: $((counter-1))${NC}"
+echo "\n${YELLOW}Script completed.${NC}"
+echo "${GREEN}Total successful requests: $success_count${NC}"
+echo "${YELLOW}Total 4XX errors: $failed_4xx_count${NC}"
+echo "${RED}Total 5XX errors: $failed_5xx_count${NC}"
+echo "${NC}Last successful request: $last_success_time"
+echo "${NC}Last failed request: $last_failed_time"
 
 

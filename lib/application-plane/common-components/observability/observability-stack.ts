@@ -3,6 +3,7 @@ import { Bucket, BucketAccessControl, BucketEncryption, BlockPublicAccess } from
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 import { Construct } from 'constructs';
 import { Dashboard, GraphWidget, MathExpression, Row, GraphWidgetView, TextWidget } from "aws-cdk-lib/aws-cloudwatch";
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 
 export class CommonObservability extends Stack {
 
@@ -31,12 +32,10 @@ export class CommonObservability extends Stack {
     });
 
     this.s3LogBucketArn = logBucket.bucketArn;
-
     
-
     const applicationPlaneHealthDashboard = new Dashboard(this, 'ApplicationPlaneHealthDashboard', {
         dashboardName: 'SaaS-App-Plane-Health-Dashboard',
-        defaultInterval: Duration.hours(3)            
+        defaultInterval: Duration.minutes(30)          
     });
 
     applicationPlaneHealthDashboard.addWidgets(
@@ -51,18 +50,18 @@ export class CommonObservability extends Stack {
                 left: [
                     new MathExpression({
                         expression: 'SELECT COUNT(CellAPICount) FROM SaaSApplicationPlane GROUP BY cellId',
-                        label: 'Request Count',                            
+                        label: 'Requests',                            
                     })
                 ],
                 leftYAxis: {
                     label: 'Count',
                     showUnits: false
                 },
-                period: Duration.hours(3),
+                period: Duration.minutes(1),
                 width: 8,
                 height: 6,
                 liveData: true,
-                view: GraphWidgetView.BAR
+                view: GraphWidgetView.TIME_SERIES
             }),
             new GraphWidget({
                 title: 'Average API Latency By Cell',                    
@@ -76,30 +75,19 @@ export class CommonObservability extends Stack {
                     label: 'Milliseconds',
                     showUnits: false
                 },
-                period: Duration.hours(3),
-                width: 8,
-                height: 6,
-                liveData: true,
-                view: GraphWidgetView.BAR
-            }),
-            new GraphWidget({
-                title: 'Active Tenants By Cell',                    
-                left: [
-                    new MathExpression({
-                        expression: 'SELECT COUNT(CellAPICount) FROM SaaSApplicationPlane GROUP BY cellId, tenantId',
-                        label: 'Requests',                            
-                    })
+                leftAnnotations: [
+                    {
+                        value: 70,
+                        color: '#ff7f0e',
+                        label: 'SLO'
+                    }
                 ],
-                leftYAxis: {
-                    label: 'Count',
-                    showUnits: false
-                },         
-                period: Duration.hours(3),           
+                period: Duration.minutes(1),
                 width: 8,
                 height: 6,
                 liveData: true,
-                view: GraphWidgetView.BAR
-            }),
+                view: GraphWidgetView.TIME_SERIES
+            })
         ),
         new Row(
             new GraphWidget({
@@ -125,7 +113,7 @@ export class CommonObservability extends Stack {
                 left: [
                     new MathExpression({
                         expression: 'SELECT AVG(WriteIOPS) FROM "AWS/RDS" GROUP BY DBClusterIdentifier',
-                        label: 'WriteIOPS',                            
+                        label: 'WriteIOPS',
                     })
                 ],
                 leftYAxis: {

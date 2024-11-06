@@ -2,8 +2,6 @@
 
 EMAIL="user@awssaascellworkshop.com"
 
-#need the empty file for the build to pass. We recreate this file during package step later
-touch lib/application-plane/cell-app-plane.zip
 
 # Deploy the solution
 ./scripts/deploy.sh
@@ -19,4 +17,4 @@ TENANT_ID=$(cat tenant_id.txt)
 echo "Tenant ID: $TENANT_ID"
 
 # Activate the tenant
-./scripts/test_activatetenant.sh $CELL_ID $TENANT_ID
+# ./scripts/test_activatetenant.sh $CELL_ID $TENANT_ID

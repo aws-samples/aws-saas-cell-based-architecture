@@ -265,72 +265,8 @@ export class CellManagementSystem extends Stack {
       }
     );
 
-    /**
-     * Start of updateCell method and associated resources
-     */
-    const updateCellRequestModel = api.addModel('UpdateCellRequestModel', {
-      contentType: 'application/json',
-      schema: {
-        schema: JsonSchemaVersion.DRAFT7,
-        title: 'Update Cell Request Data Model',
-        type: JsonSchemaType.OBJECT,
-        properties: {
-          CellId: {
-            type: JsonSchemaType.STRING,
-          },
-          CellName: {
-            type: JsonSchemaType.STRING,
-          },
-          WaveNumber: {
-            type: JsonSchemaType.INTEGER,
-            minimum: 1
-          }
-        },
-        required: ['CellId'],
-      },
-    });
-
-    // Lambda function that processes requests from API Gateway to create a new Cell
-    const updateCellLambda = new LambdaFunction(this, 'UpdateCellFunction', {
-      friendlyFunctionName: 'UpdateCellFunction',
-      index: 'updateCell.py',
-      entry: 'lib/saas-management/cell-management-system/src/lambdas/UpdateCell', 
-      handler: 'handler',        
-      environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn}
-    });
-
-    cellManagementTable.grantWriteData(updateCellLambda.lambdaFunction);
+    // TODO: Complete the below code to deploy the updateCell stack.
     
-    const updateCellResource = api.root.addResource("UpdateCell");
-    updateCellResource.addCorsPreflight({
-      allowOrigins: ['*'],
-        allowMethods: ['PUT', 'OPTIONS'],
-        allowHeaders: [
-          'Content-Type',
-          'X-Amz-Date',
-          'Authorization',
-          'X-Api-Key',
-          'X-Amz-Security-Token',
-          'X-Amz-User-Agent',
-        ]
-    })
-
-    // Create a method and associate the request model
-    const updateCellMethod = updateCellResource.addMethod(
-      'PUT',
-      new LambdaIntegration(updateCellLambda.lambdaFunction),
-      {
-        requestModels: {
-          'application/json': updateCellRequestModel,
-        },
-        requestValidatorOptions: {
-          validateRequestBody: true,
-          validateRequestParameters: false,
-        },
-        authorizationType: AuthorizationType.CUSTOM,
-        authorizer: tokenAuthorizer,
-      }
-    );
 
     /**
      * Start of assignTenantToCell method and associated resources

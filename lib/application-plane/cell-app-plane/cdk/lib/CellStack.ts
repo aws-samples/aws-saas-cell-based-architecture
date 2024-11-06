@@ -49,7 +49,19 @@ export class CellStack extends Stack {
       ec2.InstanceClass.R5,
       ec2.InstanceSize.LARGE
     )
-    let tenantsSupported = 5;
+    let tenantsSupported = 20;
+
+    if (props.cellSize == 'S') {
+      ecsInstanceType = ec2.InstanceType.of(
+        ec2.InstanceClass.M5,
+        ec2.InstanceSize.LARGE
+      )
+      rdsInstanceType = ec2.InstanceType.of(
+        ec2.InstanceClass.R5,
+        ec2.InstanceSize.LARGE
+      )
+      tenantsSupported = 20;
+    }
 
     if (props.cellSize == 'M') {
       ecsInstanceType = ec2.InstanceType.of(
@@ -62,6 +74,7 @@ export class CellStack extends Stack {
       )
       tenantsSupported = 10;
     }
+
     if (props.cellSize == 'L') {
       ecsInstanceType = ec2.InstanceType.of(
         ec2.InstanceClass.M5,
@@ -71,7 +84,7 @@ export class CellStack extends Stack {
         ec2.InstanceClass.R5,
         ec2.InstanceSize.XLARGE2
       )
-      tenantsSupported = 20;
+      tenantsSupported = 5;
     }
 
 

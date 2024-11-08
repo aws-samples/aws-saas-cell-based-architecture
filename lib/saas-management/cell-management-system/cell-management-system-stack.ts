@@ -528,6 +528,25 @@ export class CellManagementSystem extends Stack {
       }
     );
 
+    // Lambda function that monitors Cell Capacity
+    const capacityObserverLambda = new LambdaFunction(this, 'CellCapacityObserverFunction', {
+      friendlyFunctionName: 'CellCapacityObserverFunction',
+      index: 'capacityObserver.py',
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/CapacityObserver', 
+      handler: 'handler',
+      environmentVariables: {'CELL_MANAGEMENT_TABLE': cellManagementTable.tableArn}
+    });
+    
+    cellManagementTable.grantReadData(capacityObserverLambda.lambdaFunction);
+
+    // Create an EventBridge rule that runs every minute
+    const scheduledCapacityCheckRule = new events.Rule(this, 'ScheduleCapacityCheckRule', {
+      schedule: events.Schedule.expression('rate(1 minute)'),
+      enabled: true
+    });
+
+    scheduledCapacityCheckRule.addTarget(new targets.LambdaFunction(capacityObserverLambda.lambdaFunction));
+
     // Lambda function that processes requests from API Gateway to create a new Cell
     const persistCellMetadataLambda = new LambdaFunction(this, 'PersistCellMetadataFunction', {
       friendlyFunctionName: 'PersistCellMetadataFunction',

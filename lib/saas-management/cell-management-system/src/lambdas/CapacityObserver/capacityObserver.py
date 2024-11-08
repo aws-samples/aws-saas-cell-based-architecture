@@ -98,10 +98,8 @@ def emit_cell_metrics(cell_details,metrics):
 
         # Emit metrics
         metrics.reset_dimensions(False)
-        metrics.put_dimensions({ "CellId": cell_id })
-        metrics.set_namespace("CellManagement")        
-        metrics.set_property("CellId", cell_id)
-        metrics.set_property("CellName", cell_name)
+        metrics.set_namespace("CellManagement")
+        metrics.put_dimensions({ "CellId": cell_id,"CellName": cell_name })
         metrics.put_metric("CellUtilization", int(cell_utilization), "Count", StorageResolution.STANDARD)
         metrics.put_metric("CellMaxSize", int(cell_max_size), "Count", StorageResolution.STANDARD)
 

@@ -7,5 +7,5 @@ npm install
 npx cdk bootstrap
 cdk deploy Bridge --require-approval never
 source "${PWD}/scripts/package-app-plane.sh"
-cdk deploy CellRouter CellManagementSystem CellProvisioningSystem --require-approval never
+cdk deploy CommonObservability CellRouter CellManagementSystem CellProvisioningSystem --require-approval never
 CODE_BUILD=$(aws codebuild start-build --project-name SaasProductServiceBuildProject)

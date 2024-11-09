@@ -78,11 +78,7 @@ echo "${GREEN}Login complete${NC}"
 
 #retrieve the cell router cloudfront distribution url
 export DISTRIBUTION_URL=$(aws cloudformation describe-stacks --stack-name CellRouter --query "Stacks[0].Outputs[?starts_with(OutputKey, 'DistributionUrl')].OutputValue" --output text)
-<<<<<<< HEAD
-echo "${YELLOW}The cell Distribution URL: ${DISTRIBUTION_URL}${NC}"
-=======
 echo -e "${YELLOW}The cell Distribution URL: ${DISTRIBUTION_URL}${NC}"
->>>>>>> refs/remotes/origin/main
 
 # Function to make the API call
 make_request() {

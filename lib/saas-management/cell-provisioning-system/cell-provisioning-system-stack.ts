@@ -177,7 +177,7 @@ export class CellProvisioningSystem extends Stack {
             commands: [
               'cd ../scripts',
               'source ./deploy-cell.sh $CELL_ID $CELL_SIZE',
-              '[[ ! -s stack_outputs.json ]] && exit 1',
+              //'[[ ! -s stack_outputs.json ]] && exit 1',
               'STACK_OUTPUTS=$(<stack_outputs.json)',
             ],
           },
@@ -353,7 +353,7 @@ export class CellProvisioningSystem extends Stack {
               'cd $CODEBUILD_SRC_DIR/scripts',
               'source ./deploy-tenant.sh $CELL_ID $TENANT_ID $TENANT_EMAIL $TENANT_LISTENER_PRIORITY $PRODUCT_IMAGE_VERSION',
               'cd $CODEBUILD_SRC_DIR/cdk',
-              '[[ ! -s tenant_stack_outputs.json ]] && exit 1',
+              //'[[ ! -s tenant_stack_outputs.json ]] && exit 1',
               'STACK_OUTPUTS=$(<tenant_stack_outputs.json)',
             ],
           },

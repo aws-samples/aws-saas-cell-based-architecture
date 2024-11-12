@@ -40,14 +40,14 @@ export class CellStack extends Stack {
 
 
     // Define the instance types for ECS and RDS based on the cell size
-    //default to small
+    //default are the same values as for small
     let ecsInstanceType = ec2.InstanceType.of(
-      ec2.InstanceClass.M5,
-      ec2.InstanceSize.LARGE
+      ec2.InstanceClass.T3,
+      ec2.InstanceSize.MEDIUM
     )
     let rdsInstanceType = ec2.InstanceType.of(
-      ec2.InstanceClass.R5,
-      ec2.InstanceSize.LARGE
+      ec2.InstanceClass.T3,
+      ec2.InstanceSize.MEDIUM
     )
     let tenantsSupported = 20;
 
@@ -117,7 +117,7 @@ export class CellStack extends Stack {
       vpc: vpc
     });
 
-    const ecsInstanceRole = new iam.Role(this, 'EcsInstanceRole-${props.cellId}', {
+    const ecsInstanceRole = new iam.Role(this, `EcsInstanceRole-${props.cellId}`, {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role'),
@@ -331,27 +331,10 @@ export class CellStack extends Stack {
       },
     });
 
-    // const integrationProductId = new HttpIntegration(`http://${nlb.loadBalancerDnsName}/product/{id}`, {
-    //   httpMethod: 'ANY',
-    //   proxy: true,
-    //   options: {
-    //     connectionType: ConnectionType.VPC_LINK,
-    //     vpcLink: vpcLink,
-    //     requestParameters: {
-    //       'integration.request.header.tenantId': 'context.authorizer.tenantId'
-    //     }
-    //   },
-    // });
-
     const productResource = api.root.addResource('product');
-    //const productIDResource = productResource.addResource('{id}');
-
     productResource.addMethod('GET', integration);
     productResource.addMethod('POST', integration);
-    // productIDResource.addMethod('GET', integrationProductId);
-    // productIDResource.addMethod('PUT', integrationProductId);
-    // productIDResource.addMethod('DELETE', integrationProductId);
-
+    
     // Output values for import into other stacks
     new CfnOutput(this, `CellVpcId`, {value: vpc.vpcId, exportName: `CellVpcId-${props.cellId}`});
     new CfnOutput(this, `CellECSClusterName`, {

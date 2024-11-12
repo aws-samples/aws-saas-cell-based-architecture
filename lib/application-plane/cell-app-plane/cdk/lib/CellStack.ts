@@ -53,36 +53,36 @@ export class CellStack extends Stack {
 
     if (props.cellSize == 'S') {
       ecsInstanceType = ec2.InstanceType.of(
-        ec2.InstanceClass.M5,
-        ec2.InstanceSize.LARGE
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.MEDIUM
       )
       rdsInstanceType = ec2.InstanceType.of(
-        ec2.InstanceClass.R5,
-        ec2.InstanceSize.LARGE
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.MEDIUM
       )
       tenantsSupported = 20;
     }
 
     if (props.cellSize == 'M') {
       ecsInstanceType = ec2.InstanceType.of(
-        ec2.InstanceClass.M5,
-        ec2.InstanceSize.XLARGE
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.LARGE
       )
       rdsInstanceType = ec2.InstanceType.of(
-        ec2.InstanceClass.R5,
-        ec2.InstanceSize.XLARGE
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.LARGE
       )
       tenantsSupported = 10;
     }
 
     if (props.cellSize == 'L') {
       ecsInstanceType = ec2.InstanceType.of(
-        ec2.InstanceClass.M5,
-        ec2.InstanceSize.XLARGE2
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.XLARGE
       )
       rdsInstanceType = ec2.InstanceType.of(
-        ec2.InstanceClass.R5,
-        ec2.InstanceSize.XLARGE2
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.LARGE
       )
       tenantsSupported = 5;
     }

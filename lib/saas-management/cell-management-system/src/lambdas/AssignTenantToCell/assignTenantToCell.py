@@ -4,6 +4,7 @@ import json
 import boto3
 import string
 import random
+import re
 
 # Initialize clients
 eventbridge_client = boto3.client('events')
@@ -30,6 +31,14 @@ def handler(event, context):
             tenant_name = data.get('TenantName')
             tenant_tier = data.get('TenantTier')
             tenant_email = data.get('TenantEmail')
+
+            email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+            if(re.fullmatch(email_regex, tenant_email) is None):
+                logger.error('Invalid email address')
+                return {
+                    'statusCode': 400,
+                    'body': json.dumps({'error': 'Invalid email address'})
+                }
         except (json.JSONDecodeError, UnicodeDecodeError):
             logger.error('Invalid JSON or encoding in request body')
             return {

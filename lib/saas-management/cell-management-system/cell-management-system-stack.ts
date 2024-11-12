@@ -265,9 +265,6 @@ export class CellManagementSystem extends Stack {
       }
     );
 
-    // TODO: Complete the below code to deploy the updateCell stack.
-    
-
     /**
      * Start of assignTenantToCell method and associated resources
      */

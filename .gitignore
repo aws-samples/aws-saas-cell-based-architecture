@@ -381,6 +381,8 @@ yarn.lock
 cdk.out
 *.d.ts
 *.js
+lib/application-plane/cell-app-plane/cdk/stack_outputs.json
+lib/application-plane/cell-app-plane/cdk/tenant_stack_outputs.json
 lib/application-plane/cell-app-plane.zip
 lib/application-plane/cell-app-plane/scripts/next_image_version.txt
 lib/application-plane/cell-app-plane/scripts/next_listener_rule_priority_base.txt

@@ -1,6 +1,6 @@
 import { CfnOutput, Stack, StackProps, RemovalPolicy, Fn } from 'aws-cdk-lib';
 import { IntegrationPattern,JsonPath, Fail, Succeed, StateMachine, DefinitionBody, LogLevel } from 'aws-cdk-lib/aws-stepfunctions';
-import { CodeBuildStartBuild, LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { ActionOnFailure, CodeBuildStartBuild, LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Project, BuildSpec, Source, ComputeType, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
@@ -177,7 +177,6 @@ export class CellProvisioningSystem extends Stack {
             commands: [
               'cd ../scripts',
               'source ./deploy-cell.sh $CELL_ID $CELL_SIZE',
-              '[[ ! -s stack_outputs.json ]] && exit 1',
               'STACK_OUTPUTS=$(<stack_outputs.json)',
             ],
           },
@@ -353,7 +352,6 @@ export class CellProvisioningSystem extends Stack {
               'cd $CODEBUILD_SRC_DIR/scripts',
               'source ./deploy-tenant.sh $CELL_ID $TENANT_ID $TENANT_EMAIL $TENANT_LISTENER_PRIORITY $PRODUCT_IMAGE_VERSION',
               'cd $CODEBUILD_SRC_DIR/cdk',
-              '[[ ! -s tenant_stack_outputs.json ]] && exit 1',
               'STACK_OUTPUTS=$(<tenant_stack_outputs.json)',
             ],
           },

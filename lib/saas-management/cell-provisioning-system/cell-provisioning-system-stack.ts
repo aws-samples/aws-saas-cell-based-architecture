@@ -1,6 +1,6 @@
 import { CfnOutput, Stack, StackProps, RemovalPolicy, Fn } from 'aws-cdk-lib';
 import { IntegrationPattern,JsonPath, Fail, Succeed, StateMachine, DefinitionBody, LogLevel } from 'aws-cdk-lib/aws-stepfunctions';
-import { ActionOnFailure, CodeBuildStartBuild, LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { CodeBuildStartBuild, LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Project, BuildSpec, Source, ComputeType, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
@@ -337,6 +337,7 @@ export class CellProvisioningSystem extends Stack {
             },
             commands: [
               'echo CELL_ID=$CELL_ID',
+              'echo CELL_SIZE=$CELL_SIZE',
               'echo TENANT_ID=$TENANT_ID',
               'echo TENANT_EMAIL=$TENANT_EMAIL',
               'echo TENANT_LISTENER_PRIORITY=$TENANT_LISTENER_PRIORITY',
@@ -350,7 +351,7 @@ export class CellProvisioningSystem extends Stack {
           build: {
             commands: [
               'cd $CODEBUILD_SRC_DIR/scripts',
-              'source ./deploy-tenant.sh $CELL_ID $TENANT_ID $TENANT_EMAIL $TENANT_LISTENER_PRIORITY $PRODUCT_IMAGE_VERSION',
+              'source ./deploy-tenant.sh $CELL_ID $CELL_SIZE $TENANT_ID $TENANT_EMAIL $TENANT_LISTENER_PRIORITY $PRODUCT_IMAGE_VERSION',
               'cd $CODEBUILD_SRC_DIR/cdk',
               'STACK_OUTPUTS=$(<tenant_stack_outputs.json)',
             ],
@@ -443,6 +444,7 @@ export class CellProvisioningSystem extends Stack {
       integrationPattern: IntegrationPattern.RUN_JOB,
       environmentVariablesOverride: {
         CELL_ID: { value: JsonPath.stringAt('$.CellId') },
+        CELL_SIZE: { value: JsonPath.stringAt('$.CellSize') },
         TENANT_ID: { value: JsonPath.stringAt('$.TenantId') },
         TENANT_NAME: { value: JsonPath.stringAt('$.TenantName') },
         TENANT_EMAIL: { value: JsonPath.stringAt('$.TenantEmail') },
@@ -473,6 +475,7 @@ export class CellProvisioningSystem extends Stack {
     createTenantRule.addTarget(new SfnStateMachine(createTenantStateMachine, {
         input: events.RuleTargetInput.fromObject({
             CellId: events.EventField.fromPath('$.detail.cell_id'),
+            CellSize: events.EventField.fromPath('$.detail.cell_size'),
             TenantId: events.EventField.fromPath('$.detail.tenant_id'),
             TenantName: events.EventField.fromPath('$.detail.tenant_name'),
             TenantEmail: events.EventField.fromPath('$.detail.tenant_email'),

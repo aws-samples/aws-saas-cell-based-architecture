@@ -70,7 +70,7 @@ def handler(event, context):
 
         response = create_tenant(cell_id=cell_id, tenant_id=generated_tenant_id, tenant_name=tenant_name,
                                  tenant_tier=tenant_tier, tenant_email=tenant_email, tenant_listener_priority=new_tenant_listener_priority,
-                                 product_image_version=product_image_version)
+                                 product_image_version=product_image_version, cell_size=cell_information.get('cell_size'))
         # Log the response
         logger.info('Response: %s', response)
         return response
@@ -124,7 +124,7 @@ def check_cell_status(cell_information):
         }
         
 
-def create_tenant(cell_id, tenant_name, tenant_id, tenant_tier, tenant_email, tenant_listener_priority, product_image_version):
+def create_tenant(cell_id, tenant_name, tenant_id, tenant_tier, tenant_email, tenant_listener_priority, product_image_version, cell_size):
     
     # Send a message to EventBridge
     cell_management_bus = os.environ.get('CELL_MANAGEMENT_BUS')
@@ -136,6 +136,7 @@ def create_tenant(cell_id, tenant_name, tenant_id, tenant_tier, tenant_email, te
                 'Detail': json.dumps({
                     'event_type': 'create_tenant',
                     'cell_id': cell_id,
+                    'cell_size': cell_size,
                     'tenant_name': tenant_name,
                     'tenant_id': tenant_id,
                     'tenant_tier': tenant_tier,

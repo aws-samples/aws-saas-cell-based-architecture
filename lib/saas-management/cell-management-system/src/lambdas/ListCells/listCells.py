@@ -30,7 +30,7 @@ def list_cells():
     table = dynamodb.Table(cell_management_table)
     cells = []
     scan_kwargs = {
-        "ProjectionExpression": "PK, cell_name, current_status"
+        "ProjectionExpression": "PK, cell_name, current_status, cell_utilization"
     }
     try:
         done = False
@@ -48,6 +48,7 @@ def list_cells():
                     item['CellId'] = item.pop('PK')
                     item['CellName'] = item.pop('cell_name')
                     item['Status'] = item.pop('current_status')
+                    item['CellUtilization'] = str(item.pop('cell_utilization'))
             cells.extend(response.get("Items", []))
             start_key = response.get("LastEvaluatedKey", None)
             done = start_key is None

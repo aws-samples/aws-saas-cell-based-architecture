@@ -4,6 +4,7 @@ import json
 import boto3
 import string
 import random
+import re
 
 # Initialize clients
 eventbridge_client = boto3.client('events')
@@ -30,6 +31,14 @@ def handler(event, context):
             tenant_name = data.get('TenantName')
             tenant_tier = data.get('TenantTier')
             tenant_email = data.get('TenantEmail')
+
+            email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+            if(re.fullmatch(email_regex, tenant_email) is None):
+                logger.error('Invalid email address')
+                return {
+                    'statusCode': 400,
+                    'body': json.dumps({'error': 'Invalid email address'})
+                }
         except (json.JSONDecodeError, UnicodeDecodeError):
             logger.error('Invalid JSON or encoding in request body')
             return {
@@ -61,7 +70,7 @@ def handler(event, context):
 
         response = create_tenant(cell_id=cell_id, tenant_id=generated_tenant_id, tenant_name=tenant_name,
                                  tenant_tier=tenant_tier, tenant_email=tenant_email, tenant_listener_priority=new_tenant_listener_priority,
-                                 product_image_version=product_image_version)
+                                 product_image_version=product_image_version, cell_size=cell_information.get('cell_size'))
         # Log the response
         logger.info('Response: %s', response)
         return response
@@ -115,7 +124,7 @@ def check_cell_status(cell_information):
         }
         
 
-def create_tenant(cell_id, tenant_name, tenant_id, tenant_tier, tenant_email, tenant_listener_priority, product_image_version):
+def create_tenant(cell_id, tenant_name, tenant_id, tenant_tier, tenant_email, tenant_listener_priority, product_image_version, cell_size):
     
     # Send a message to EventBridge
     cell_management_bus = os.environ.get('CELL_MANAGEMENT_BUS')
@@ -127,6 +136,7 @@ def create_tenant(cell_id, tenant_name, tenant_id, tenant_tier, tenant_email, te
                 'Detail': json.dumps({
                     'event_type': 'create_tenant',
                     'cell_id': cell_id,
+                    'cell_size': cell_size,
                     'tenant_name': tenant_name,
                     'tenant_id': tenant_id,
                     'tenant_tier': tenant_tier,

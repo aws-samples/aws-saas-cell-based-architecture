@@ -34,6 +34,8 @@ export class CommonObservability extends Stack {
     });
 
     this.s3LogBucketArn = logBucket.bucketArn;
+
+    //TODO: Paste the code for the aggregated alarms, below this line          
     
     const applicationPlaneHealthDashboard = new Dashboard(this, 'ApplicationPlaneHealthDashboard', {
         dashboardName: 'SaaS-App-Plane-Health-Dashboard',
@@ -46,6 +48,10 @@ export class CommonObservability extends Stack {
             height: 1,
             width: 24
         }),
+        //TODO: Paste the code for aggregated metrics, below this line
+            
+        //TODO: Paste the code for the alarm widgets, below this line         
+                  
         new Row(
             new GraphWidget({
                 title: 'Total API Requests By Cell',
@@ -195,7 +201,7 @@ export class CommonObservability extends Stack {
                 liveData: true,
                 view: GraphWidgetView.TIME_SERIES
             }),
-        )               
+        )             
     )
   }
 }

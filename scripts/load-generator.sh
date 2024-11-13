@@ -91,6 +91,7 @@ draw_table_footer() {
     echo "└────────────┴────────────┴────────────┴────────────┴────────────┘"
 }
 
+<<<<<<< HEAD
 # Function to prepare login for a cell-tenant pair
 prepare_login() {
     local cell_id=$1
@@ -120,6 +121,23 @@ prepare_login() {
     
     echo "${id_token}"
 }
+=======
+#Set the password on Cognito
+aws cognito-idp admin-set-user-password --user-pool-id  $USER_POOL_ID_CELL --username tenantadmin-${TENANT_ID} --password tenat@AdminPass1 --permanent
+
+#Using both USER_POOL_ID_CELL and USER_POOL_CLIENT_ID_CELL to login using initiate-auth
+export ID_TOKEN_CELL=$(aws cognito-idp initiate-auth \--auth-flow USER_PASSWORD_AUTH \
+--client-id $USER_POOL_CLIENT_ID_CELL \
+--auth-parameters "USERNAME=tenantadmin-${TENANT_ID},PASSWORD=tenat@AdminPass1" \
+--query 'AuthenticationResult' | jq -r '.IdToken')
+
+#Confirm that login is complete
+echo "${GREEN}Login complete${NC}"
+
+#retrieve the cell router cloudfront distribution url
+export DISTRIBUTION_URL=$(aws cloudformation describe-stacks --stack-name CellRouter --query "Stacks[0].Outputs[?starts_with(OutputKey, 'DistributionUrl')].OutputValue" --output text)
+echo -e "${YELLOW}The cell Distribution URL: ${DISTRIBUTION_URL}${NC}"
+>>>>>>> refs/remotes/origin/main
 
 # Function to make the API call
 make_request() {

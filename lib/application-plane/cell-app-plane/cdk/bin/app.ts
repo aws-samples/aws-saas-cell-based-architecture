@@ -29,7 +29,7 @@ const productImageVersion = app.node.tryGetContext('productImageVersion');
 // Check if tenantId is provided in context and instantiate TenantStack if it is
 if (tenantId) {
   const stackName = `Cell-${cellId}-Tenant-${tenantId}`;
-    new CellTenantStack(app, stackName, { cellId, tenantId, tenantEmail, priorityBase, productImageVersion, env });
+    new CellTenantStack(app, stackName, { cellId, cellSize, tenantId, tenantEmail, priorityBase, productImageVersion, env });
 }
 
 

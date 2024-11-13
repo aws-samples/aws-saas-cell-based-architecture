@@ -16,6 +16,7 @@ import { CdkNagUtils } from '../utils/cdk-nag-utils'
 
 interface CellTenantStackProps extends cdk.StackProps {
     cellId: string;
+    cellSize: string;
     tenantId: string;
     tenantEmail: string;
     priorityBase: string;
@@ -30,10 +31,29 @@ export class CellTenantStack extends cdk.Stack {
         CdkNagUtils.suppressCDKNag(this);
 
         const stack = Stack.of(this)
-        const { tenantId } = props;
+        const tenantId  = props.tenantId;
+        const cell_size = props.cellSize;
 
-        if (!tenantId) {
-            throw new Error('tenantId context parameter is required');
+        
+        if (!tenantId || !cell_size) {
+            throw new Error('tenantId and cell_size context parameters are required');
+        }
+
+        // Set the defaults for 'S'
+        let cpuAllocated = 256;
+        let memoryLimit = 512;
+
+        if(props.cellSize == 'S'){
+            cpuAllocated = 256;
+            memoryLimit = 512;
+        }
+        else if(props.cellSize == 'M'){
+            cpuAllocated = 512;
+            memoryLimit = 1024;
+        }
+        else if(props.cellSize == 'L'){
+            cpuAllocated = 1024;
+            memoryLimit = 1024;
         }
 
         const tenantPriorityBase = Number(props.priorityBase);
@@ -111,8 +131,8 @@ export class CellTenantStack extends cdk.Stack {
         // Add a container to the task definition
         const container = taskDefinition.addContainer('product', {
             image: ecs.ContainerImage.fromRegistry(`${accountId}.dkr.ecr.${region}.amazonaws.com/product-service:${props.productImageVersion}`),
-            cpu: 256,
-            memoryLimitMiB: 512,
+            cpu: cpuAllocated,
+            memoryLimitMiB: memoryLimit,
             environment: {
                 AWS_ACCOUNT_ID: accountId,
                 AWS_REGION: region

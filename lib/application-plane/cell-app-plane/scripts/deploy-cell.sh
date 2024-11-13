@@ -38,3 +38,22 @@ npx cdk deploy "Cell-$CELL_NAME" --app "npx ts-node bin/app.ts" \
   --concurrency 10 \
   --asset-parallelism true \
   --outputs-file stack_outputs.json
+
+if [ -s stack_outputs.json ]; then
+  filesize=$(stat -c%s stack_outputs.json)
+  if [ $filesize -gt 5 ]; then
+    echo CDK deploy ran successfully and wrote stack outputs to file, exiting cleanly
+    echo "CONTENTS OF stack_outputs.json:"
+    cat stack_outputs.json
+    ls -lh
+  else
+    echo CDK deploy ended without outputs being written to file, exiting with an error code
+    echo "CONTENTS OF stack_outputs.json:"
+    cat stack_outputs.json
+    ls -lh
+    exit 1
+  fi
+else
+  echo CDK deploy ended without outputs file being created at all, so exiting with an error code
+  exit 1
+fi

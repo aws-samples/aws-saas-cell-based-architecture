@@ -196,6 +196,10 @@
                       {
                         "Name": "CELL_ID",
                         "Value.$": "$.tenantStack.cellId"
+                      },
+                      {
+                        "Name": "CELL_SIZE",
+                        "Value.$": "$.tenantStack.cellSize"
                       },                      
                       {
                         "Name": "TENANT_EMAIL",

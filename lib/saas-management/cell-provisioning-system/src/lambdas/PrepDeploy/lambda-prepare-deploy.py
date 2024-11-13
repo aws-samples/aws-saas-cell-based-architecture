@@ -165,6 +165,7 @@ def lambda_handler(event, context):
                         "tenantId": mapping['tenant_id'],
                         "PK": mapping['PK'],                        
                         "cellId": mapping['cell_id'],
+                        "cellSize": mapping['cell_size'],
                         "tenantEmail": mapping['tenant_email'],
                         "tenantListenerPriority": mapping['tenant_listener_priority'],
                         "productImageVersion": product_image_version
@@ -182,6 +183,7 @@ def lambda_handler(event, context):
                         "tenantId": item["tenantId"],
                         "PK": item["PK"],
                         "cellId": item["cellId"],
+                        "cellSize": item["cellSize"],
                         "tenantEmail": item["tenantEmail"],
                         "tenantListenerPriority": str(item["tenantListenerPriority"]),
                         "productImageVersion": item["productImageVersion"]

@@ -158,6 +158,7 @@ def create_tenant(cell_id, tenant_name, tenant_id, tenant_tier, tenant_email, te
             Item={
                 'PK': cell_id+"#"+tenant_id,
                 'cell_id': cell_id,
+                'cell_size': cell_size,
                 'tenant_id': tenant_id,
                 'tenant_name': tenant_name,
                 'tenant_tier': tenant_tier,

@@ -1,4 +1,4 @@
-import { aws_cognito, StackProps, RemovalPolicy } from 'aws-cdk-lib';
+import { aws_cognito, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { IdentityDetails } from './identity-details';
 
@@ -32,6 +32,7 @@ export class IdentityProvider extends Construct {
         userSrp: true,
         custom: false,
       },
+      idTokenValidity: Duration.hours(2),
       writeAttributes: writeAttributes,
       oAuth: {
         scopes: [

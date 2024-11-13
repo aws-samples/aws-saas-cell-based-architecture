@@ -14,6 +14,11 @@ NC='\033[0m' # No Color
 # Initialize arrays
 declare -a CELL_IDS
 declare -a TENANT_IDS
+declare -a ID_TOKENS
+declare -a SUCCESS_COUNTS
+declare -a FAILED_4XX_COUNTS
+declare -a FAILED_5XX_COUNTS
+declare -a LAST_RESPONSES
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -68,10 +73,11 @@ draw_table_header() {
 draw_table_row() {
     local cell_id=$1
     local tenant_id=$2
-    local success=${SUCCESS_COUNTS[$cell_id]}
-    local failed_4xx=${FAILED_4XX_COUNTS[$cell_id]}
-    local failed_5xx=${FAILED_5XX_COUNTS[$cell_id]}
-    local last_response="${LAST_RESPONSES[$cell_id]:-N/A}"
+    local i=$3
+    local success=${SUCCESS_COUNTS[$i]}
+    local failed_4xx=${FAILED_4XX_COUNTS[$i]}
+    local failed_5xx=${FAILED_5XX_COUNTS[$i]}
+    local last_response="${LAST_RESPONSES[$i]:-N/A}"
     
     # Truncate last response to fit in column
     last_response="${last_response:0:24}"
@@ -124,7 +130,7 @@ make_request() {
     local timestamp=$(date +%s | tail -c 7)
     local random=$((RANDOM % 1000))
     local product_id=$((timestamp * 1000 + random))
-    
+
     local response=$(curl -s -w "\n%{http_code}" -X POST \
         --url "https://${distribution_url}/product" \
         -H "content-type: application/json" \
@@ -147,67 +153,76 @@ echo "${GREEN}Duration: ${DURATION} seconds${NC}"
 DISTRIBUTION_URL=$(aws cloudformation describe-stacks --stack-name CellRouter \
     --query "Stacks[0].Outputs[?starts_with(OutputKey, 'DistributionUrl')].OutputValue" --output text)
 
-echo "${YELLOW}The cell Distribution URL: ${DISTRIBUTION_URL}${NC}"
+echo "${YELLOW}The cell router URL: ${DISTRIBUTION_URL}${NC}"
 
-# Initialize arrays for tokens and statistics
-declare -a ID_TOKENS
-declare -a SUCCESS_COUNTS
-declare -a FAILED_4XX_COUNTS
-declare -a FAILED_5XX_COUNTS
-declare -a LAST_RESPONSES
+
 
 # Prepare logins for all cell-tenant pairs
 for i in "${!CELL_IDS[@]}"; do
     cell_id="${CELL_IDS[$i]}"
     tenant_id="${TENANT_IDS[$i]}"
     echo "${YELLOW}Preparing login for cell:${NC} ${cell_id} ${YELLOW}and tenant:${NC} ${tenant_id}"
-    ID_TOKENS[$cell_id]=$(prepare_login "$cell_id" "$tenant_id")
-    SUCCESS_COUNTS[$cell_id]=0
-    FAILED_4XX_COUNTS[$cell_id]=0
-    FAILED_5XX_COUNTS[$cell_id]=0
-    LAST_RESPONSES[$cell_id]="N/A"
+    ID_TOKENS[$i]=$(prepare_login "$cell_id" "$tenant_id")
+    echo "${GREEN}Login prepared successfully.${NC}"
+    index=$cell_id$tenant_id
+    SUCCESS_COUNTS[$i]=0
+    FAILED_4XX_COUNTS[$i]=0
+    FAILED_5XX_COUNTS[$i]=0
+    LAST_RESPONSES[$i]="N/A"
 done
 
 # Calculate end time
 END_TIME=$(($(date +%s) + DURATION))
+
+    # Draw initial rows
+    clear
+    echo "${Blue}Test Progress:${NC}"
+    draw_table_header
+    for i in "${!CELL_IDS[@]}"; do
+        cell_id="${CELL_IDS[$i]}"
+        tenant_id="${TENANT_IDS[$i]}"
+    draw_table_row "$cell_id" "$tenant_id"
+    done
+    draw_table_footer
+
 
 # Main loop
 while [ $(date +%s) -lt $END_TIME ]; do
     for i in "${!CELL_IDS[@]}"; do
         cell_id="${CELL_IDS[$i]}"
         tenant_id="${TENANT_IDS[$i]}"
-        
-        response=$(make_request "${ID_TOKENS[$cell_id]}" "$tenant_id" "$DISTRIBUTION_URL")
-        http_code=$(echo "$response" | cut -d'|' -f1)
-        response_body=$(echo "$response" | cut -d'|' -f2-)
+        response=$(make_request "${ID_TOKENS[$i]}" "$tenant_id" "$DISTRIBUTION_URL")
+        http_code=$(echo "$response" | head -n1 | cut -c1-3)
+        response_body=$(echo "$response" | tail -n1 | cut -d'|' -f2)
         
         # Update counters
-        if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
-            ((SUCCESS_COUNTS[$cell_id]++))
-        elif [ "$http_code" -ge 400 ] && [ "$http_code" -lt 500 ]; then
-            ((FAILED_4XX_COUNTS[$cell_id]++))
-        elif [ "$http_code" -ge 500 ]; then
-            ((FAILED_5XX_COUNTS[$cell_id]++))
+        if [[ "$http_code" -ge 200 ]] && [[ "$http_code" -lt 300 ]]; then
+            ((SUCCESS_COUNTS[$i]++))
+        elif [[ "$http_code" -ge 400 ]] && [[ "$http_code" -lt 500 ]]; then
+            ((FAILED_4XX_COUNTS[$i]++))
+        elif [[ "$http_code" -ge 500 ]]; then
+            ((FAILED_5XX_COUNTS[$i]++))
         fi
-        
-        LAST_RESPONSES[$cell_id]=$response_body
-        
-        # Update display
-        # Clear previous table content
-        clear
-        echo "${Blue}Test Progress:${NC}"
-        draw_table_header
-        
-        
-        # Draw initial rows
-for i in "${!CELL_IDS[@]}"; do
-    cell_id="${CELL_IDS[$i]}"
-    tenant_id="${TENANT_IDS[$i]}"
-    draw_table_row "$cell_id" "$tenant_id"
-done
-draw_table_footer
-        
-        # Small delay to prevent too frequent updates
-        sleep 0.1
+        #Fetch the last response message for each cell and tenant combination. The code trims the first 60 characters only.
+        LAST_RESPONSES[$i]=$(echo "${response_body}" | cut -c1-60)
+
+    
     done
+    clear
+    echo "${BLUE}Test Progress:${NC}"
+    draw_table_header
+    for i in "${!CELL_IDS[@]}"; do
+        cell_id="${CELL_IDS[$i]}"
+        tenant_id="${TENANT_IDS[$i]}"
+        draw_table_row "$cell_id" "$tenant_id" "$i"
+    done
+    draw_table_footer
+
+    #Add the last response message for each entry. This is only valid when the --debug flag is passed. 
+    for i in "${!CELL_IDS[@]}"; do
+        cell_id="${CELL_IDS[$i]}"
+        tenant_id="${TENANT_IDS[$i]}"
+        echo "Last Response for Cell ID: ${cell_id} and Tenant ID: ${tenant_id}: ${LAST_RESPONSES[$i]}"
+    done
+    
 done

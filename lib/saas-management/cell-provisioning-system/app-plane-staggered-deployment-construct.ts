@@ -23,6 +23,7 @@ export interface AppPlaneStaggeredDeploymentsInterface extends cdk.StackProps {
   region: string;
   account: string;
   commonLoggingBucketArn: string;
+  aggregateHttp5xxAlarmName: string;
 }
 
 export class AppPlaneStaggeredDeploymentsConstruct extends Construct {
@@ -31,6 +32,7 @@ export class AppPlaneStaggeredDeploymentsConstruct extends Construct {
       super(scope, id);
       const s3SourceBucketName = props.s3SourceBucketName; 
       const sourceZipLocation = props.sourceZipLocation;
+      const aggregateHttp5xxAlarmName = props.aggregateHttp5xxAlarmName;
 
       const logBucket = s3.Bucket.fromBucketArn(this,"loggingBucket",props.commonLoggingBucketArn);
 
@@ -243,7 +245,8 @@ export class AppPlaneStaggeredDeploymentsConstruct extends Construct {
               "sqs:sendmessage",
               "events:PutTargets",
               "events:PutRule",
-              "events:DescribeRule"
+              "events:DescribeRule",
+              "cloudwatch:DescribeAlarms"
             ],
           }),
         ],
@@ -269,7 +272,8 @@ export class AppPlaneStaggeredDeploymentsConstruct extends Construct {
           APPROVAL_QUEUE_URL: approvalQueue.queueUrl,
           CELL_MANAGEMENT_TABLE_NAME: props.cellManagementTable.tableName,
           CODE_BUILD_PROJECT_NAME: props.cellCodeBuildProject.projectName,
-          TENANT_MGMT_CODE_BUILD_PROJECT_NAME: props.tenantManagementCodeBuildProject.projectName
+          TENANT_MGMT_CODE_BUILD_PROJECT_NAME: props.tenantManagementCodeBuildProject.projectName,
+          AGGREGATE_ALARM_HTTP_5XX: aggregateHttp5xxAlarmName
         },
         stateMachineName: 'CellDeploymentStateMachine',
         stateMachineType: 'STANDARD',

@@ -60,6 +60,9 @@ let cellProvisioningSystemStack = new CellProvisioningSystem(app, 'CellProvision
     orchestrationBus: bridgeStack.orchestrationEventBus,
     cellManagementTable: cellManagementSystemStack.cellManagementTable,
     s3LoggingBucketArn: commonObservabilityStack.s3LogBucketArn,
-    s3CellSourceBucketArn: bridgeStack.cellSourceBucketArn
+    s3CellSourceBucketArn: bridgeStack.cellSourceBucketArn,
+    aggregateHttp5xxAlarmName: commonObservabilityStack.aggregateHttp5xxAlarmName
 });
+
+
 

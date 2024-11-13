@@ -21,6 +21,7 @@ export interface CellProvisioningSystemProps extends StackProps {
   cellManagementTable: Table;
   s3LoggingBucketArn: string;
   s3CellSourceBucketArn: string;
+  aggregateHttp5xxAlarmName: string;
 }
 
 export class CellProvisioningSystem extends Stack {
@@ -499,6 +500,7 @@ export class CellProvisioningSystem extends Stack {
         region: this.region,
         account: this.account,
         commonLoggingBucketArn: logBucket.bucketArn,
+        aggregateHttp5xxAlarmName: props.aggregateHttp5xxAlarmName
     });            
   }
 }

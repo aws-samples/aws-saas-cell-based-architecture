@@ -1,4 +1,5 @@
 import { Stack, StackProps, RemovalPolicy, CfnOutput, Duration, Tags } from 'aws-cdk-lib';
+import * as cdk from 'aws-cdk-lib';
 import { Bucket, BucketAccessControl, BucketEncryption, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 import { Construct } from 'constructs';
@@ -8,6 +9,7 @@ import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 export class CommonObservability extends Stack {
 
   readonly s3LogBucketArn: string;
+  readonly aggregateHttp5xxAlarmName: string ;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -75,13 +77,6 @@ export class CommonObservability extends Stack {
                     label: 'Milliseconds',
                     showUnits: false
                 },
-                leftAnnotations: [
-                    {
-                        value: 70,
-                        color: '#ff7f0e',
-                        label: 'SLO'
-                    }
-                ],
                 period: Duration.minutes(1),
                 width: 8,
                 height: 6,

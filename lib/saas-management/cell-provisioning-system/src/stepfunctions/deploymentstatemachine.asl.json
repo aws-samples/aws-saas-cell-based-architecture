@@ -235,6 +235,7 @@
               }
             },
             "Next": "Deployment Succeeded",
+            "ResultPath": null,
             "ItemsPath": "$.stack.tenantsInCell",
             "ItemSelector": {
               "tenantStack.$": "$$.Map.Item.Value"

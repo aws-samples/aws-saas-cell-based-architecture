@@ -17,12 +17,6 @@ const app = new App();
  */
 Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }))
 
-/**
- * Common observability components
- */
-let commonObservabilityStack = new CommonObservability(app, 'CommonObservability',{
-    description: "Contains common observability resources for the solution"
-});
 
 /*
  * Create the components that bridge the SAAS control plane and
@@ -30,8 +24,7 @@ let commonObservabilityStack = new CommonObservability(app, 'CommonObservability
  * S3 bucket for application plane source archives and SSM Params
  */
 let bridgeStack = new Bridge(app, 'Bridge', {
-    description: "Contains integration components used for communication between the Cell Management System and the Cell Provisioning System.",
-    s3LoggingBucketArn: commonObservabilityStack.s3LogBucketArn
+    description: "Contains integration components used for communication between the Cell Management System and the Cell Provisioning System."    
 });
 
 /**
@@ -39,7 +32,15 @@ let bridgeStack = new Bridge(app, 'Bridge', {
  */
 let cellRouterStack = new CommonCellRouter(app, 'CellRouter', {
     description: "Thinnest possible routing later, used for deterministic routing of api requests into individual cells.",
-    s3LoggingBucketArn: commonObservabilityStack.s3LogBucketArn
+    s3LoggingBucketArn: bridgeStack.s3LogBucketArn
+});
+
+/**
+ * Common observability components
+ */
+let commonObservabilityStack = new CommonObservability(app, 'CommonObservability',{
+    description: "Contains common observability resources for the solution",
+    distributionId: cellRouterStack.distributionId
 });
 
 /**
@@ -59,7 +60,7 @@ let cellProvisioningSystemStack = new CellProvisioningSystem(app, 'CellProvision
     description: "Cell provisioning system, used for deployment of cells and tenants.",
     orchestrationBus: bridgeStack.orchestrationEventBus,
     cellManagementTable: cellManagementSystemStack.cellManagementTable,
-    s3LoggingBucketArn: commonObservabilityStack.s3LogBucketArn,
+    s3LoggingBucketArn: bridgeStack.s3LogBucketArn,
     s3CellSourceBucketArn: bridgeStack.cellSourceBucketArn,
     aggregateHttp5xxAlarmName: commonObservabilityStack.aggregateHttp5xxAlarmName
 });

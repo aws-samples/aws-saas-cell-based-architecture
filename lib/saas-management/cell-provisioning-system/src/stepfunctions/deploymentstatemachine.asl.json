@@ -5,7 +5,7 @@
       "Type": "Pass",
       "Next": "Iterator",
       "Result": {
-        "total_waves": "1",
+        "total_waves": "2",
         "index": 0,
         "step": 1
       },
@@ -200,7 +200,7 @@
                       {
                         "Name": "CELL_SIZE",
                         "Value.$": "$.tenantStack.cellSize"
-                      },                      
+                      },
                       {
                         "Name": "TENANT_EMAIL",
                         "Value.$": "$.tenantStack.tenantEmail"
@@ -248,6 +248,42 @@
           "Deployment Succeeded": {
             "Comment": "Placeholder for a state which handles the success.",
             "Type": "Pass",
+            "Next": "Wait for Cell Bake Time"
+          },
+          "Wait for Cell Bake Time": {
+            "Type": "Wait",
+            "Seconds": 240,
+            "Next": "Check CloudWatch Alarm"
+          },
+          "Check CloudWatch Alarm": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:cloudwatch:describeAlarms",
+            "Parameters": {
+              "AlarmNames": ["${AGGREGATE_ALARM_HTTP_5XX}"]
+            },
+            "ResultSelector": {
+              "state.$": "$.MetricAlarms[0].StateValue"
+            },
+            "ResultPath": "$.alarmStatus",
+            "Next": "Evaluate Alarm State"
+          },
+          "Evaluate Alarm State": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.alarmStatus.state",
+                "StringEquals": "OK",
+                "Next": "Cell Healthcheck Successful"
+              }
+            ],
+            "Default": "Cell Healthcheck Failed"
+          },
+          "Cell Healthcheck Failed": {
+            "Type": "Fail",
+            "Error": "Cell deployment is successful, yet health check failed. Blocking deployment"
+          },
+          "Cell Healthcheck Successful": {
+            "Type": "Pass",
             "End": true
           },
           "Deployment Failed": {
@@ -270,31 +306,6 @@
         {
           "Variable": "$.iterator.continue",
           "BooleanEquals": true,
-          "Next": "Wait for next wave approval"
-        }
-      ],
-      "Default": "Deployment Complete"
-    },
-    "Wait for next wave approval": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::sqs:sendMessage.waitForTaskToken",
-      "Parameters": {
-        "QueueUrl": "${APPROVAL_QUEUE_URL}",
-        "MessageBody": {
-          "MessageTitle": "Waiting for next deployment to be approved",
-          "CurrentDeploymentWave.$": "$.iterator.index",
-          "TaskToken.$": "$$.Task.Token"
-        }
-      },
-      "Next": "Deployment Approved?",
-      "ResultPath": "$.TaskResult"
-    },
-    "Deployment Approved?": {
-      "Type": "Choice",
-      "Choices": [
-        {
-          "Variable": "$.TaskResult.approval_status",
-          "StringEquals": "Approved",
           "Next": "Iterator"
         }
       ],

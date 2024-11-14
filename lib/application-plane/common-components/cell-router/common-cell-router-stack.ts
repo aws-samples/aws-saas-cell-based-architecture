@@ -26,11 +26,11 @@ import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 
 export interface CommonCellRouterProps extends StackProps
 {
-  readonly s3LoggingBucketArn: string;
+  readonly s3LoggingBucketArn: string;  
 }
 
 export class CommonCellRouter extends Stack {
-
+  readonly distributionId: string;
   readonly s3ConfigBucketName: string;
 
   constructor(scope: Construct, id: string, props: CommonCellRouterProps) {
@@ -124,6 +124,8 @@ export class CommonCellRouter extends Stack {
         allowedMethods: AllowedMethods.ALLOW_ALL
       },
     });
+
+    this.distributionId = distribution.distributionId
 
     new CfnOutput(this, 'DistributionUrl', {
       value: distribution.domainName,

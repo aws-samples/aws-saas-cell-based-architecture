@@ -1,17 +1,20 @@
 import { Stack, StackProps, RemovalPolicy, CfnOutput, Duration, Tags } from 'aws-cdk-lib';
 import * as cdk from 'aws-cdk-lib';
-import { Bucket, BucketAccessControl, BucketEncryption, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 import { Construct } from 'constructs';
 import { Dashboard, GraphWidget, MathExpression, Row, GraphWidgetView, TextWidget } from "aws-cdk-lib/aws-cloudwatch";
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 
+export interface CommonObservabilityProps extends StackProps {
+  readonly distributionId: string
+}
+
 export class CommonObservability extends Stack {
 
-  readonly s3LogBucketArn: string;
   readonly aggregateHttp5xxAlarmName: string ;
 
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: CommonObservabilityProps) {
     super(scope, id, props);
 
     // Handle CDK nag suppressions.
@@ -19,23 +22,7 @@ export class CommonObservability extends Stack {
 
     Tags.of(this).add('SaaSApplicationService', `Observability`);                
 
-    const logBucket = new Bucket(this, 's3AccessLogBucket', {
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-      versioned: false,
-      accessControl: BucketAccessControl.LOG_DELIVERY_WRITE,
-      enforceSSL: true,
-      encryption: BucketEncryption.S3_MANAGED,
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      lifecycleRules: [{
-        id: 'object retention policy',
-        expiration: Duration.days(7)
-      }]
-    });
-
-    this.s3LogBucketArn = logBucket.bucketArn;
-
-    //TODO: Paste the code for the aggregated alarms, below this line          
+    //TODO: Paste the code for the aggregated alarms, below this line             
     
     const applicationPlaneHealthDashboard = new Dashboard(this, 'ApplicationPlaneHealthDashboard', {
         dashboardName: 'SaaS-App-Plane-Health-Dashboard',
@@ -50,7 +37,7 @@ export class CommonObservability extends Stack {
         }),
         //TODO: Paste the code for aggregated metrics, below this line
             
-        //TODO: Paste the code for the alarm widgets, below this line         
+        //TODO: Paste the code for the alarm widgets, below this line     
                   
         new Row(
             new GraphWidget({

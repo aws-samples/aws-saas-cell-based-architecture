@@ -166,6 +166,7 @@ export class CellStack extends Stack {
     const alb = new elbv2.ApplicationLoadBalancer(this, lbName, {
       vpc: vpc,
       internetFacing: false,
+      dropInvalidHeaderFields: true,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
       }

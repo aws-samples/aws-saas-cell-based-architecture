@@ -12,7 +12,7 @@ create_workshop() {
     echo $VSSERVER_ID "ready"
 
 
-    run_ssm_command "export UV_USE_IO_URING=0 && npm install typescript -g"
+    run_ssm_command "export UV_USE_IO_URING=0 && npm install typescript"
     run_ssm_command "cd /${HOME_FOLDER} && git clone ${REPO_URL}"
     run_sss_command "chown -R ${TARGET_USER}:${TARGET_USER} ${HOME_FOLDER}"
     run_ssm_command ". ~/.bashrc && cd /${HOME_FOLDER}/${REPO_NAME} && chmod +x install.sh && ./install.sh"

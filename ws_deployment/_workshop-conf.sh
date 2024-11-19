@@ -5,6 +5,7 @@
 ## Defines workshop configuration shared amongst scripts
 
 ## Variables
+REPO_URL="https://github.com/aws-samples/aws-saas-cell-based-architecture"
 REPO_NAME="aws-saas-cell-based-architecture"
 TARGET_USER="participant"
 HOME_FOLDER="Workshop"

@@ -6,8 +6,16 @@ create_workshop() {
     
     get_vscodeserver_id
     
-    run_ssm_command "echo 'export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)' >> /home/${TARGET_USER}/.bashrc"
-    run_ssm_command "cd /${HOME_FOLDER}/${REPO_NAME} && chmod +x install.sh && export UV_USE_IO_URING=0 && ./install.sh"
+    echo "Waiting for " $VSSERVER_ID
+    aws ec2 start-instances --instance-ids "$VSSERVER_ID"
+    aws ec2 wait instance-status-ok --instance-ids "$VSSERVER_ID"
+    echo $VSSERVER_ID "ready"
+
+
+    run_ssm_command "export UV_USE_IO_URING=0 && npm install typescript -g"
+    run_ssm_command "cd /${HOME_FOLDER} && git clone ${REPO_URL}"
+    run_sss_command "chown -R ${TARGET_USER}:${TARGET_USER} ${HOME_FOLDER}"
+    run_ssm_command ". ~/.bashrc && cd /${HOME_FOLDER}/${REPO_NAME} && chmod +x install.sh && ./install.sh"
     run_ssm_command "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"            
 
 }

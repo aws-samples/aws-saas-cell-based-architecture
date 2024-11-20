@@ -248,6 +248,42 @@
           "Deployment Succeeded": {
             "Comment": "Placeholder for a state which handles the success.",
             "Type": "Pass",
+            "Next": "Wait for Cell Bake Time"
+          },
+          "Wait for Cell Bake Time": {
+            "Type": "Wait",
+            "Seconds": 300,
+            "Next": "Check CloudWatch Alarm"
+          },
+          "Check CloudWatch Alarm": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:cloudwatch:describeAlarms",
+            "Parameters": {
+              "AlarmNames": ["${AGGREGATE_ALARM_HTTP_5XX}"]
+            },
+            "ResultSelector": {
+              "state.$": "$.MetricAlarms[0].StateValue"
+            },
+            "ResultPath": "$.alarmStatus",
+            "Next": "Evaluate Alarm State"
+          },
+          "Evaluate Alarm State": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.alarmStatus.state",
+                "StringEquals": "OK",
+                "Next": "Cell Healthcheck Successful"
+              }
+            ],
+            "Default": "Cell Healthcheck Failed"
+          },
+          "Cell Healthcheck Failed": {
+            "Type": "Fail",
+            "Error": "Cell deployment is successful, yet health check failed. Blocking deployment"
+          },
+          "Cell Healthcheck Successful": {
+            "Type": "Pass",
             "End": true
           },
           "Deployment Failed": {

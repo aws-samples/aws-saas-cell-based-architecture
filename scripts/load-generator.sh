@@ -36,8 +36,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         *)
-            echo "${RED}Unknown parameter: $1${NC}"
-            echo "${YELLOW}Usage: $0 --cell-ids <cell_id1,cell_id2,...> --tenant-ids <tenant_id1,tenant_id2,...> --duration <seconds>${NC}"
+            echo -e "${RED}Unknown parameter: $1${NC}"
+            echo -e "${YELLOW}Usage: $0 --cell-ids <cell_id1,cell_id2,...> --tenant-ids <tenant_id1,tenant_id2,...> --duration <seconds>${NC}"
             exit 1
             ;;
     esac
@@ -45,17 +45,17 @@ done
 
 # Validation checks
 if [ ${#CELL_IDS[@]} -eq 0 ]; then
-    echo "${RED}Error: No cell IDs provided${NC}"
+    echo -e "${RED}Error: No cell IDs provided${NC}"
     exit 1
 fi
 
 if [ ${#TENANT_IDS[@]} -eq 0 ]; then
-    echo "${RED}Error: No tenant IDs provided${NC}"
+    echo -e "${RED}Error: No tenant IDs provided${NC}"
     exit 1
 fi
 
 if [ ${#CELL_IDS[@]} -ne ${#TENANT_IDS[@]} ]; then
-    echo "${RED}Error: Number of cell IDs must match number of tenant IDs${NC}"
+    echo -e "${RED}Error: Number of cell IDs must match number of tenant IDs${NC}"
     exit 1
 fi
 
@@ -64,9 +64,9 @@ DURATION=${DURATION:-$DEFAULT_DURATION}
 
 # Function to draw table header
 draw_table_header() {
-    echo "\n┌────────────┬────────────┬────────────┬────────────┬────────────┐"
-    echo "│  ${BLUE}Cell ID${NC}   │ ${BLUE}Tenat ID${NC}   | ${GREEN}Successful${NC} │   ${YELLOW}4XX${NC}      │   ${RED}5XX${NC}      │"
-    echo "├────────────┼────────────┼────────────┼────────────┼────────────┤"
+    echo -e "\n┌────────────┬────────────┬────────────┬────────────┬────────────┐"
+    echo -e "│  ${BLUE}Cell ID${NC}   │ ${BLUE}Tenat ID${NC}   | ${GREEN}Successful${NC} │   ${YELLOW}4XX${NC}      │   ${RED}5XX${NC}      │"
+    echo -e "├────────────┼────────────┼────────────┼────────────┼────────────┤"
 }
 
 # Function to draw table row
@@ -88,7 +88,7 @@ draw_table_row() {
 
 # Function to draw table footer
 draw_table_footer() {
-    echo "└────────────┴────────────┴────────────┴────────────┴────────────┘"
+    echo -e "└────────────┴────────────┴────────────┴────────────┴────────────┘"
 }
 
 # Function to prepare login for a cell-tenant pair
@@ -118,7 +118,7 @@ prepare_login() {
         --auth-parameters "USERNAME=tenantadmin-${tenant_id},PASSWORD=tenat@AdminPass1" \
         --query 'AuthenticationResult' | jq -r '.IdToken')
     
-    echo "${id_token}"
+    echo -e "${id_token}"
 }
 
 # Function to make the API call
@@ -138,22 +138,22 @@ make_request() {
         -H "tenantId: ${tenant_id}" \
         -d "{\"productId\":\"${product_id}\",\"productName\":\"p${product_id}\",\"productDescription\":\"p${product_id}desc\",\"productPrice\":\"10\"}")
     
-    local body=$(echo "$response" | sed '$d')
-    local http_code=$(echo "$response" | tail -n1)
-    echo "$http_code|$body"
+    local body=$(echo -e "$response" | sed '$d')
+    local http_code=$(echo -e "$response" | tail -n1)
+    echo -e "$http_code|$body"
 }
 
 # Display the configuration
-echo "${YELLOW}Running with configuration:${NC}"
-echo "${GREEN}Cell IDs: ${CELL_IDS[*]}${NC}"
-echo "${GREEN}Tenant IDs: ${TENANT_IDS[*]}${NC}"
-echo "${GREEN}Duration: ${DURATION} seconds${NC}"
+echo -e "${YELLOW}Running with configuration:${NC}"
+echo -e "${GREEN}Cell IDs: ${CELL_IDS[*]}${NC}"
+echo -e "${GREEN}Tenant IDs: ${TENANT_IDS[*]}${NC}"
+echo -e "${GREEN}Duration: ${DURATION} seconds${NC}"
 
 # Get distribution URL
 DISTRIBUTION_URL=$(aws cloudformation describe-stacks --stack-name CellRouter \
     --query "Stacks[0].Outputs[?starts_with(OutputKey, 'DistributionUrl')].OutputValue" --output text)
 
-echo "${YELLOW}The cell router URL: ${DISTRIBUTION_URL}${NC}"
+echo -e "${YELLOW}The cell router URL: ${DISTRIBUTION_URL}${NC}"
 
 
 
@@ -161,9 +161,9 @@ echo "${YELLOW}The cell router URL: ${DISTRIBUTION_URL}${NC}"
 for i in "${!CELL_IDS[@]}"; do
     cell_id="${CELL_IDS[$i]}"
     tenant_id="${TENANT_IDS[$i]}"
-    echo "${YELLOW}Preparing login for cell:${NC} ${cell_id} ${YELLOW}and tenant:${NC} ${tenant_id}"
+    echo -e "${YELLOW}Preparing login for cell:${NC} ${cell_id} ${YELLOW}and tenant:${NC} ${tenant_id}"
     ID_TOKENS[$i]=$(prepare_login "$cell_id" "$tenant_id")
-    echo "${GREEN}Login prepared successfully.${NC}"
+    echo -e "${GREEN}Login prepared successfully.${NC}"
     index=$cell_id$tenant_id
     SUCCESS_COUNTS[$i]=0
     FAILED_4XX_COUNTS[$i]=0
@@ -176,7 +176,7 @@ END_TIME=$(($(date +%s) + DURATION))
 
     # Draw initial rows
     clear
-    echo "${Blue}Test Progress:${NC}"
+    echo -e "${Blue}Test Progress:${NC}"
     draw_table_header
     for i in "${!CELL_IDS[@]}"; do
         cell_id="${CELL_IDS[$i]}"
@@ -192,8 +192,8 @@ while [ $(date +%s) -lt $END_TIME ]; do
         cell_id="${CELL_IDS[$i]}"
         tenant_id="${TENANT_IDS[$i]}"
         response=$(make_request "${ID_TOKENS[$i]}" "$tenant_id" "$DISTRIBUTION_URL")
-        http_code=$(echo "$response" | head -n1 | cut -c1-3)
-        response_body=$(echo "$response" | tail -n1 | cut -d'|' -f2)
+        http_code=$(echo -e "$response" | head -n1 | cut -c1-3)
+        response_body=$(echo -e "$response" | tail -n1 | cut -d'|' -f2)
         
         # Update counters
         if [[ "$http_code" -ge 200 ]] && [[ "$http_code" -lt 300 ]]; then
@@ -204,12 +204,12 @@ while [ $(date +%s) -lt $END_TIME ]; do
             ((FAILED_5XX_COUNTS[$i]++))
         fi
         #Fetch the last response message for each cell and tenant combination. The code trims the first 60 characters only.
-        LAST_RESPONSES[$i]=$(echo "${response_body}" | cut -c1-60)
+        LAST_RESPONSES[$i]=$(echo -e "${response_body}" | cut -c1-60)
 
     
     done
     clear
-    echo "${BLUE}Test Progress:${NC}"
+    echo -e "${BLUE}Test Progress:${NC}"
     draw_table_header
     for i in "${!CELL_IDS[@]}"; do
         cell_id="${CELL_IDS[$i]}"
@@ -222,7 +222,7 @@ while [ $(date +%s) -lt $END_TIME ]; do
     for i in "${!CELL_IDS[@]}"; do
         cell_id="${CELL_IDS[$i]}"
         tenant_id="${TENANT_IDS[$i]}"
-        echo "Last Response for Cell ID: ${cell_id} and Tenant ID: ${tenant_id}: ${LAST_RESPONSES[$i]}"
+        echo -e "Last Response for Cell ID: ${cell_id} and Tenant ID: ${tenant_id}: ${LAST_RESPONSES[$i]}"
     done
     
 done

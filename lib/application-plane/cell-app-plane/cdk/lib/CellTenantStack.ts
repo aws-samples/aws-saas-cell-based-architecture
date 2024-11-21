@@ -110,18 +110,19 @@ export class CellTenantStack extends cdk.Stack {
         });
 
         // Create an IAM role for ECS Task Definition
-        const adminRoleTasdef = new iam.Role(this, 'AdminRole', {
+        const ecsTaskRole = new iam.Role(this, 'EcsTaskRole', {
             assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com')
         });
 
-        adminRoleTasdef.addManagedPolicy(
+        //TODO: This should be limited to the secrets manager that is being provisioned for this tenant.
+        ecsTaskRole.addManagedPolicy(
             iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess')
         );
 
-        // Create an ECS task definition with the admin role
+        // Create an ECS task definition with the role
         const taskDefinition = new ecs.Ec2TaskDefinition(this, `TaskDef_${tenantId}`, {
-            executionRole: adminRoleTasdef,
-            taskRole: adminRoleTasdef
+            executionRole: ecsTaskRole,
+            taskRole: ecsTaskRole
         });
 
         Object.entries(commonTags).forEach(([key, value]) => {

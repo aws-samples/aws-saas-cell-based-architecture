@@ -80,6 +80,15 @@ export class CellManagementSystem extends Stack {
       nonKeyAttributes: ['cell_id', 'tenant_name', 'tenant_email', 'tenant_tier'],
     });
 
+    cellManagementTable.addGlobalSecondaryIndex({
+      indexName: 'TenantsByCellIdIndex',
+      partitionKey: { name: 'cell_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.INCLUDE,
+      nonKeyAttributes: ['tenant_name', 'current_status'],
+    });
+
+
     const s3ConfigBucket = s3.Bucket.fromBucketName(this, 'requestRouterConfigBucket',props.s3ConfigBucketName)
 
     const restAPIAccessLogGroup = new LogGroup(this, 'APIGatewayAccessLogs', {
@@ -378,7 +387,7 @@ export class CellManagementSystem extends Stack {
         ],
     })
 
-    // Create a method and associate the request model for describe cell
+    // Create a method and associate the request model for describe tenant
     const describeTenantMethod = describeTenantResource.addMethod(
       'GET',
       new LambdaIntegration(describeTenantLambda.lambdaFunction),
@@ -395,6 +404,55 @@ export class CellManagementSystem extends Stack {
         authorizer: tokenAuthorizer,
       }
     );
+
+
+    /**
+     * Start of ListTenants method and associated resources
+     */    
+    // Lambda function that processes requests from API Gateway to List an existing Cell
+    const listTenantsLambda = new LambdaFunction(this, 'ListTenantsFunction', {
+      friendlyFunctionName: 'ListTenantsFunction',
+      index: 'listTenants.py',
+      entry: 'lib/saas-management/cell-management-system/src/lambdas/ListTenants', 
+      handler: 'handler',      
+      environmentVariables: {
+        'TENANT_MANAGEMENT_TABLE': cellManagementTable.tableArn
+      }
+    })
+    cellManagementTable.grantReadData(listTenantsLambda.lambdaFunction); 
+
+    const listTenantsResource = api.root.addResource("ListTenants");
+
+    listTenantsResource.addCorsPreflight({
+      allowOrigins: ['*'],
+        allowMethods: ['GET', 'OPTIONS'],
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+          'X-Amz-User-Agent',
+        ],
+    })
+
+    // Create a method and associate the request model for list tenants
+    const listTenantsMethod = listTenantsResource.addMethod(
+      'GET',
+      new LambdaIntegration(listTenantsLambda.lambdaFunction),
+      {
+        requestParameters: {
+          'method.request.querystring.CellId': true,          
+        },
+        requestValidatorOptions: {
+          validateRequestBody: false,
+          validateRequestParameters: true,
+        },
+        authorizationType: AuthorizationType.CUSTOM,
+        authorizer: tokenAuthorizer,
+      }
+    );
+
 
     /**
      * Start of deactivateTenant method and associated resources

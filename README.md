@@ -2,6 +2,7 @@
 This workshop delves into the realm of cell-based architecture, an approach that has gained traction in recent years for its ability to enhance the scalability, reliability, and efficiency of SaaS architectures. By deploying the SaaS application into smaller, independent cells, workshop participants will learn how to solve challenges like reducing contention between tenants, supporting a tiering strategy, reducing blast radius, and increasing the overall resilience of their systems. The workshop will provide a hands-on experience, allowing learners to go under the hood of a working SaaS application, and explore various aspects of a cell-based architecture, including provisioning, configuration, observability, routing, and sharding of cells.
 
 The AWS workshop can be found at the following location:
+
 [Building resilient and scalable SaaS applications with a cell-based architecture](https://catalog.us-east-1.prod.workshops.aws/workshops/44d6042c-1ff7-43c2-9343-cff46c43e165/en-US)
 
 Whilst intended to be used primarily for the workshop, the code can be used independently to explore and interact with the various components of a cell-based architecture:

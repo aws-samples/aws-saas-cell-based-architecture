@@ -4,7 +4,7 @@ This workshop delves into the realm of cell-based architecture, an approach that
 The AWS workshop can be found at the following location:
 [Building resilient and scalable SaaS applications with a cell-based architecture](https://catalog.us-east-1.prod.workshops.aws/workshops/44d6042c-1ff7-43c2-9343-cff46c43e165/en-US)
 
-Whilst intended to be used primarily for the workshop, the code can be used independently to interact with the various components of a cell-based architecture:
+Whilst intended to be used primarily for the workshop, the code can be used independently to explore and interact with the various components of a cell-based architecture:
 
 1. To deploy the solution, use the included deployment script to package and deploy:
 

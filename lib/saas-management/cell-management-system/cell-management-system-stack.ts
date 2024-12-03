@@ -472,7 +472,7 @@ export class CellManagementSystem extends Stack {
       },
     });
 
-    // Lambda function that processes requests from API Gateway to create a new Tenant
+    // Lambda function that processes requests from API Gateway to Deactive a Tenant
     const deactivateTenantLambda = new LambdaFunction(this, 'DeactivateTenantFunction', {
       friendlyFunctionName: 'DeactivateTenant',
       index: 'deactivateTenant.py',
@@ -604,7 +604,7 @@ export class CellManagementSystem extends Stack {
 
     scheduledCapacityCheckRule.addTarget(new targets.LambdaFunction(capacityObserverLambda.lambdaFunction));
 
-    // Lambda function that processes requests from API Gateway to create a new Cell
+    // Lambda function that persist metadata for Cells from EventBridge
     const persistCellMetadataLambda = new LambdaFunction(this, 'PersistCellMetadataFunction', {
       friendlyFunctionName: 'PersistCellMetadataFunction',
       index: 'persistCellMetadata.py',
@@ -616,7 +616,7 @@ export class CellManagementSystem extends Stack {
     cellManagementTable.grantWriteData(persistCellMetadataLambda.lambdaFunction);    
 
 
-    // Create an EventBridge rule to process Metadata from Cell creation
+    // Create an EventBridge rule to process Metadata for Cells
     const persistCellMetadataRule = new events.Rule(this, 'PersistCellMetadataRule', {
       eventBus: cellManagementBus,
       eventPattern: {
@@ -630,7 +630,7 @@ export class CellManagementSystem extends Stack {
     /**
      * Start of Persist Tenant
      */
-    // Lambda function that processes requests from API Gateway to create a new Cell
+    // Lambda function that persist metadata for Tenants from EventBridge
     const persistTenantMetadataLambda = new LambdaFunction(this, 'PersistTenantMetadataFunction', {
       friendlyFunctionName: 'PersistTenantMetadataFunction',
       index: 'persistTenantMetadata.py',
@@ -641,7 +641,7 @@ export class CellManagementSystem extends Stack {
     cellManagementTable.grantReadWriteData(persistTenantMetadataLambda.lambdaFunction);
 
 
-    // Create an EventBridge rule to process Metadata from Cell creation
+    // Create an EventBridge rule to process Metadata from Tenant creation
     const persistTenantMetadataRule = new events.Rule(this, 'PersistTenantMetadataRule', {
       eventBus: cellManagementBus,
       eventPattern: {

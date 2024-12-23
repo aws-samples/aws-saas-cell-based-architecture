@@ -3,7 +3,8 @@ import {
   StackProps, 
   RemovalPolicy, 
   CfnOutput, 
-  Duration 
+  Duration,
+  PhysicalName
 } from 'aws-cdk-lib';
 import { 
   CacheCookieBehavior, 
@@ -18,22 +19,17 @@ import {
 } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
-import { Bucket, BucketEncryption, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+import { Bucket, BucketEncryption, BlockPublicAccess, BucketAccessControl } from 'aws-cdk-lib/aws-s3';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { readFileSync } from 'fs';
 import { Construct } from 'constructs';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 
-export interface CommonCellRouterProps extends StackProps
-{
-  readonly s3LoggingBucketArn: string;  
-}
-
 export class CommonCellRouter extends Stack {
   readonly distributionId: string;
   readonly s3ConfigBucketName: string;
 
-  constructor(scope: Construct, id: string, props: CommonCellRouterProps) {
+  constructor(scope: Construct, id: string, props: StackProps) {
     
     /**
      * call the parent constructor
@@ -43,7 +39,20 @@ export class CommonCellRouter extends Stack {
     // Handle CDK nag suppressions.
     CdkNagUtils.suppressCDKNag(this);
 
-    const logBucket = Bucket.fromBucketArn(this,"loggingBucket",props.s3LoggingBucketArn);
+    const logBucket = new Bucket(this, 's3AccessLogBucket', {
+      bucketName: PhysicalName.GENERATE_IF_NEEDED,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      versioned: false,
+      accessControl: BucketAccessControl.LOG_DELIVERY_WRITE,
+      enforceSSL: true,
+      encryption: BucketEncryption.S3_MANAGED,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      lifecycleRules: [{
+        id: 'object retention policy',
+        expiration: Duration.days(7)
+      }]
+    });
 
     const s3DefaultOriginBucket = new Bucket(this, 'DefaultOriginBucket',{
       removalPolicy: RemovalPolicy.DESTROY,

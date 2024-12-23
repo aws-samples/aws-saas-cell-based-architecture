@@ -1,4 +1,4 @@
-import { CfnOutput, Stack, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib';
+import { CfnOutput, Stack, StackProps, RemovalPolicy, Duration, PhysicalName } from 'aws-cdk-lib';
 import { EventBus } from 'aws-cdk-lib/aws-events';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
@@ -21,6 +21,7 @@ export class Bridge extends Stack {
     // Handle CDK nag suppressions.
     CdkNagUtils.suppressCDKNag(this);
     const logBucket = new Bucket(this, 's3AccessLogBucket', {
+      bucketName: PhysicalName.GENERATE_IF_NEEDED,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       versioned: false,

@@ -60,7 +60,7 @@ let commonObservabilityStack = new CommonObservability(app, 'CommonObservability
  */
 let cellManagementSystemStack = new CellManagementSystem(app, 'CellManagementSystem',{
     description: "Cell management system, used for creation and management of cells and tenants.",
-    s3ConfigBucketName: cellRouterStack.s3ConfigBucketName,
+    cellToTenantKvsArn: cellRouterStack.cellToTenantKvsArn,
     eventBusArn: bridgeStack.orchestrationEventBus.eventBusArn,
     versionSsmParameter: bridgeStack.imageVersionParam,
     crossRegionReferences: true,
@@ -85,6 +85,3 @@ let cellProvisioningSystemStack = new CellProvisioningSystem(app, 'CellProvision
         region: process.env.CDK_DEFAULT_REGION
     },
 });
-
-
-

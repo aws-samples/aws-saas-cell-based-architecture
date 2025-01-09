@@ -135,7 +135,6 @@ make_request() {
         --url "https://${distribution_url}/product" \
         -H "content-type: application/json" \
         -H "Authorization: Bearer ${id_token}" \
-        -H "tenantId: ${tenant_id}" \
         -d "{\"productId\":\"${product_id}\",\"productName\":\"p${product_id}\",\"productDescription\":\"p${product_id}desc\",\"productPrice\":\"10\"}")
     
     local body=$(echo -e "$response" | sed '$d')

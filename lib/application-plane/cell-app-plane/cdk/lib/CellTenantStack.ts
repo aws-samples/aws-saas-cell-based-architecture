@@ -7,7 +7,6 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { createHash } from 'crypto'
 import { AwsCustomResource, AwsCustomResourcePolicy, AwsSdkCall, PhysicalResourceId } from 'aws-cdk-lib/custom-resources'
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -164,7 +163,9 @@ export class CellTenantStack extends cdk.Stack {
         repository.grantPull(taskDefinition.taskRole);
 
         const healthCheck = {
-            interval: cdk.Duration.seconds(60),
+            interval: cdk.Duration.seconds(10),
+            healthyThresholdCount: 2,
+            unhealthyThresholdCount: 10,
             path: '/health',
             timeout: cdk.Duration.seconds(5)
         };

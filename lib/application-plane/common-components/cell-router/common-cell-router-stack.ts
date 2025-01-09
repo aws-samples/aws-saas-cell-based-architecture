@@ -4,7 +4,7 @@ import {
   RemovalPolicy, 
   CfnOutput, 
   Duration,
-  PhysicalName
+  PhysicalName 
 } from 'aws-cdk-lib';
 import { 
   CacheCookieBehavior, 
@@ -12,22 +12,23 @@ import {
   CacheHeaderBehavior, 
   CacheQueryStringBehavior, 
   Distribution, 
-  LambdaEdgeEventType, 
   SecurityPolicyProtocol, 
   AllowedMethods,
-  OriginRequestPolicy
+  OriginRequestPolicy,
+  KeyValueStore,
+  Function,
+  FunctionCode,
+  FunctionRuntime,
+  FunctionEventType,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
 import { Bucket, BucketEncryption, BlockPublicAccess, BucketAccessControl } from 'aws-cdk-lib/aws-s3';
-import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
-import { readFileSync } from 'fs';
 import { Construct } from 'constructs';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 
 export class CommonCellRouter extends Stack {
   readonly distributionId: string;
-  readonly s3ConfigBucketName: string;
+  readonly cellToTenantKvsArn: string;
 
   constructor(scope: Construct, id: string, props: StackProps) {
     
@@ -64,46 +65,21 @@ export class CommonCellRouter extends Stack {
       serverAccessLogsBucket: logBucket,  
     });
 
-    /**
-     * this variable is used to define the path and permissions
-     * for the lambda
-     */
-    const cellMappingObjectKey = 'tenantToCellMapping.json'
-
-    const configBucket = new Bucket(this, 'RequestRouterConfigBucket',{
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-      versioned: true,
-      enforceSSL: true,
-      encryption: BucketEncryption.S3_MANAGED,
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      serverAccessLogsPrefix: "logs/buckets/config-bucket/",
-      serverAccessLogsBucket: logBucket,  
+    // Create a Key Value Store
+    const keyValueStore = new KeyValueStore(this, 'CellToTenantKeyValueStore', {
+      keyValueStoreName: 'cell-tenant-mapping-store',
+      comment: 'Store for mapping of cells to tenants',
     });
 
-    this.s3ConfigBucketName = configBucket.bucketName
-
-    /**
-     * Lambda@edge does not support environment variables, so
-     * read the function code from the file and inject the necessary variables
-     */
-    const functionCode = readFileSync('lib/application-plane/common-components/cell-router/src/lambdas/CellRouter/cellRouter.py', 'utf8').replace('S3_BUCKET_NAME', configBucket.bucketName).replace('S3_OBJECT_KEY',cellMappingObjectKey);
-
-    // Create a Lambda function
-    const cellRoutingLambda = new Function(this, 'CellRoutingLambda', {
-      runtime: Runtime.PYTHON_3_12,
-      code: Code.fromInline(functionCode),
-      handler: 'index.lambda_handler',
+    // Create the Routing CloudFront Function
+    const routerFunction = new Function(this, 'CellRoutingFunction', {
+      functionName: 'tenant-router',
+      code: FunctionCode.fromFile({
+        filePath: 'lib/application-plane/common-components/cell-router/src/functions/cell-router.js'
+      }),
+      runtime: FunctionRuntime.JS_2_0,
+      keyValueStore: keyValueStore,
     });
-
-    // Add s3 get permissions to the role
-    cellRoutingLambda.role?.addToPrincipalPolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: [
-        's3:GetObject',
-      ],
-      resources: [`${configBucket.bucketArn}/${cellMappingObjectKey}`],
-    }));
 
     // Create a CloudFront Distribution
     const distribution = new Distribution(this, 'MyDistribution', {
@@ -114,7 +90,7 @@ export class CommonCellRouter extends Stack {
       defaultBehavior: {
         origin: S3BucketOrigin.withOriginAccessControl(s3DefaultOriginBucket),
         cachePolicy: new CachePolicy(this, 'ApiCachePolicy', {
-          headerBehavior: CacheHeaderBehavior.allowList('tenantid'),
+          headerBehavior: CacheHeaderBehavior.allowList('tenantid','Authorization'),
           queryStringBehavior: CacheQueryStringBehavior.all(),
           cookieBehavior: CacheCookieBehavior.none(),
           minTtl: Duration.minutes(0),
@@ -123,27 +99,28 @@ export class CommonCellRouter extends Stack {
           enableAcceptEncodingGzip: true,
           enableAcceptEncodingBrotli: true,
         }),
-        edgeLambdas: [{
-            includeBody: true,
-            eventType: LambdaEdgeEventType.ORIGIN_REQUEST,
-            functionVersion: cellRoutingLambda.currentVersion,            
+        functionAssociations: [
+          {
+            function: routerFunction,
+            eventType: FunctionEventType.VIEWER_REQUEST,
           },
         ],
-        originRequestPolicy: OriginRequestPolicy.ALL_VIEWER,
+        originRequestPolicy: OriginRequestPolicy.CORS_CUSTOM_ORIGIN,
         allowedMethods: AllowedMethods.ALLOW_ALL
       },
     });
 
     this.distributionId = distribution.distributionId
+    this.cellToTenantKvsArn = keyValueStore.keyValueStoreArn;
 
     new CfnOutput(this, 'DistributionUrl', {
       value: distribution.domainName,
       description: 'The DNS name of CF Distribution',
     });
 
-    new CfnOutput(this, 'ConfigBucketArn', {
-      value: configBucket.bucketArn,
-      description: 'The Arn for the Config S3 Bucket',
-    });
+    new CfnOutput(this, 'CellToTenantKvsArn', {
+      value: keyValueStore.keyValueStoreArn,
+      description: 'The Arn for the Cell to Tenant KVS',
+    })
   }
 }

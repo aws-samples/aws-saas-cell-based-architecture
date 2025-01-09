@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import boto3
@@ -9,49 +8,36 @@ from botocore.config import Config
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-BUCKET_NAME = os.environ.get('S3_BUCKET_NAME')
-OBJECT_KEY = 'tenantToCellMapping.json'
 DYNAMO_CELL_MANAGEMENT_TABLE = os.environ.get('CELL_MANAGEMENT_TABLE')
+CELL_ROUTER_KVS_ARN = os.environ.get('CELL_ROUTER_KVS_ARN')
 
-# Create an S3 client with keepalives to maximise performance
-s3 = boto3.session.Session().client(
-    's3', 
+kvsClient = boto3.session.Session().client(
+    'cloudfront-keyvaluestore',
     region_name='us-east-1',
-    config=Config(tcp_keepalive=True,retries={'mode': 'adaptive'})
+    config=Config(tcp_keepalive=True,retries={'mode': 'adaptive'},signature_version='v4')
 )
 
 dynamodb = boto3.resource('dynamodb')
 ddb_table = dynamodb.Table(DYNAMO_CELL_MANAGEMENT_TABLE)
 
-def get_config_map():
-    
+def write_cell_routing_entry(tenantId, url):    
     try:
-        logger.debug('Fetching config object from S3')
-        # Get the object from S3
-        response = s3.get_object(Bucket=BUCKET_NAME, Key=OBJECT_KEY)
+        logger.debug('writing config for tenant to KVS')
 
-        # Read and decode the object content
-        object_content = response['Body'].read().decode('utf-8')
-        
-        # Parse the JSON and store it in the global variable
-        mapping_data = json.loads(object_content)
+        # Get the current etag
+        describe_response = kvsClient.describe_key_value_store(
+            KvsARN=CELL_ROUTER_KVS_ARN
+        )
 
-    except ClientError as e:
-        logger.error(f'Error retrieving config object: {e}')
-        if e.response['Error']['Code'] == 'NoSuchKey':
-            logger.info('No object found - returning empty dictionary')
-            mapping_data = dict()
-    except json.JSONDecodeError as e:
-        logger.error(f'Error parsing config object: {e}')
-    except Exception as e:
-        logger.error(f'Unexpected Error retrieving or parsing config object: {e}')
-    return mapping_data
+        logger.info(f"describe_response: {describe_response}")
 
-def put_config_map(configMap):    
-    try:
-        logger.debug('writing config object to S3')
-        # Get the object from S3
-        response = s3.put_object(Bucket=BUCKET_NAME, Key=OBJECT_KEY, Body=json.dumps(configMap))
+        # Write the new routing information to KVS
+        put_response = kvsClient.put_key(
+            Key=tenantId,
+            Value=url,
+            KvsARN=CELL_ROUTER_KVS_ARN,
+            IfMatch=describe_response.get('ETag')
+        )
         
     except ClientError as e:
         logger.error(f'Error persisting config object: {e}')
@@ -132,11 +118,8 @@ def handler(event, context):
             logger.debug("retrieved tenant details: %s", tenant_details)
 
             if cell_details.get('current_status') == "available" and tenant_details.get('current_status') == "available":
-                config_map = get_config_map()
-                logger.debug('config map from s3: %s',json.dumps(config_map))
-                config_map[tenant_id] = cell_details.get('cell_url')
-                logger.debug('updated config map: %s',json.dumps(config_map))
-                put_config_map(config_map)
+                logger.debug('updated config being written: %s -> %s',tenant_id, cell_details.get('cell_url'))
+                write_cell_routing_entry(tenant_id, cell_details.get('cell_url'))
                 logger.debug('config map successfully written to s3')
             else:
                 return {

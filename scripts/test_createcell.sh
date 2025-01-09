@@ -51,7 +51,7 @@ if [ "$DATA" != "$USER" ]; then
     # create user
     CREATE_ADMIN=$(aws cognito-idp admin-create-user \
         --user-pool-id "$USER_POOL_ID" \
-        --username "$USER" )
+        --username "$USER")
         
 
     # remove need for password reset

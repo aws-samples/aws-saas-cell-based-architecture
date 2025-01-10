@@ -11,9 +11,8 @@ create_workshop() {
     aws ec2 wait instance-status-ok --instance-ids "$VSSERVER_ID"
     echo $VSSERVER_ID "ready"
 
-
     run_ssm_command "export UV_USE_IO_URING=0 && npm install typescript"
-    run_ssm_command "cd /${HOME_FOLDER} && git clone ${REPO_URL}"
+    run_ssm_command "cd /${HOME_FOLDER} && git clone --single-branch --branch $REPO_BRANCH_NAME $REPO_URL ."
     run_ssm_command "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"
     run_ssm_command ". ~/.bashrc && cd /${HOME_FOLDER}/${REPO_NAME} && chmod +x install.sh && ./install.sh"
     run_ssm_command "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"            

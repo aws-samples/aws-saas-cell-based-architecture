@@ -15,6 +15,8 @@ create_workshop() {
     run_ssm_command "cd /${HOME_FOLDER}"
     run_ssm_command "git clone --single-branch --branch $REPO_BRANCH_NAME $REPO_URL"
     run_ssm_command "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"
+    run_ssm_command "pwd"
+    run_ssm_command "ls -R"
     run_ssm_command ". ~/.bashrc && cd /${HOME_FOLDER}/${REPO_NAME} && chmod +x install.sh && ./install.sh"
     run_ssm_command "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"            
 

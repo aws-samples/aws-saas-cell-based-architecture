@@ -11,11 +11,12 @@ create_workshop() {
     aws ec2 wait instance-status-ok --instance-ids "$VSSERVER_ID"
     echo $VSSERVER_ID "ready"
 
-    run_ssm_command "$TARGET_USER" "$VSSERVER_ID" "export UV_USE_IO_URING=0 && npm install typescript"
-    run_ssm_command "$TARGET_USER" "$VSSERVER_ID" "cd /${HOME_FOLDER}"
-    run_ssm_command "$TARGET_USER" "$VSSERVER_ID" "git clone --depth 1 --branch $GIT_BRANCH $GIT_REPO || echo 'Repo already exists.'"
-    run_ssm_command "$TARGET_USER" "$VSSERVER_ID" "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"
-    run_ssm_command "$TARGET_USER" "$VSSERVER_ID" ". ~/.bashrc && cd /${HOME_FOLDER}/${REPO_NAME} && chmod +x install.sh && ./install.sh"
-    run_ssm_command "$TARGET_USER" "$VSSERVER_ID" "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"         
+    run_ssm_command "export UV_USE_IO_URING=0 && npm install typescript"
+    run_ssm_command "cd /${HOME_FOLDER}"
+    run_ssm_command "git clone --depth 1 --branch $GIT_BRANCH $GIT_REPO || echo 'Workshop repository already exists.'"
+    run_ssm_command "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"
+    run_ssm_command ". ~/.bashrc && cd /${HOME_FOLDER}/${REPO_NAME} && chmod +x install.sh"
+    run_ssm_command "./install.sh"
+    run_ssm_command "chown -R ${TARGET_USER}:${TARGET_USER} /${HOME_FOLDER}"         
 
 }

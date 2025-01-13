@@ -389,3 +389,5 @@ lib/application-plane/cell-app-plane/scripts/next_listener_rule_priority_base.tx
 cell_id.txt
 tenant_id.txt
 out.txt
+
+!lib/application-plane/common-components/cell-router/src/functions/*.js

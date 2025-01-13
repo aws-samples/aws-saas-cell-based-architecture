@@ -1,10 +1,9 @@
 import { RemovalPolicy } from 'aws-cdk-lib';
-import { Function, Runtime, Code }  from 'aws-cdk-lib/aws-lambda';
+import { Function, Runtime }  from 'aws-cdk-lib/aws-lambda';
 import { Role, Policy, ServicePrincipal, PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import * as lambda_python from '@aws-cdk/aws-lambda-python-alpha';
-import { log } from 'console';
 
 export interface LambdaFunctionProps {
   friendlyFunctionName: string
@@ -48,7 +47,7 @@ export class LambdaFunction extends Construct {
 
     this.lambdaFunction = new lambda_python.PythonFunction(this, 'lambdaFunction', {
       entry: props.entry,
-      runtime: Runtime.PYTHON_3_12,
+      runtime: Runtime.PYTHON_3_13,
       handler: props.handler,
       index: props.index,
       logGroup: logGroup,

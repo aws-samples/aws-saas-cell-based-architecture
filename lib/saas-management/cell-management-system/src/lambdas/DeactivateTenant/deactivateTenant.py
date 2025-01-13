@@ -25,7 +25,7 @@ def delete_cell_routing_entry(tenantId):
             KvsARN=CELL_ROUTER_KVS_ARN
         )
         
-        # Remvoe the routing information from KVS
+        # Remove the routing information from KVS
         delete_response = kvsClient.delete_key(
             KvsARN=CELL_ROUTER_KVS_ARN,
             Key=tenantId,

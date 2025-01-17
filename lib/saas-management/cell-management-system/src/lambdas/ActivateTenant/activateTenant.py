@@ -120,7 +120,7 @@ def handler(event, context):
             if cell_details.get('current_status') == "available" and tenant_details.get('current_status') == "available":
                 logger.debug('updated config being written: %s -> %s',tenant_id, cell_details.get('cell_url'))
                 write_cell_routing_entry(tenant_id, cell_details.get('cell_url'))
-                logger.debug('config map successfully written to s3')
+                logger.debug('config map successfully written to KVS')
             else:
                 return {
                     'statusCode': 400,

@@ -7,9 +7,17 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Define CloudWatch logs domains to block with region placeholder
+declare -a DOMAINS
+DOMAINS[60]="logs.REGION.amazonaws.com"
+DOMAINS[80]="logs.REGION.api.aws"
+
 # Initialize arrays
 declare -a CELL_IDS
-declare -a subnets_array
+
+# Store Rule numbers and NACL IDs for cleanup
+declare -a RULE_NUMBERS
+declare -A NACL_IDS
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -63,6 +71,9 @@ contains_element() {
 # Function to resolve DNS and get CIDR blocks
 get_cidr_blocks() {
     local domain=$1
+    local subnets_array=()
+
+    echo -e "${BLUE}Resolving $domain${NC}" >&2
     local ips=($(dig +short "$domain"))
     
     if [ ${#ips[@]} -eq 0 ]; then
@@ -72,17 +83,104 @@ get_cidr_blocks() {
     
     # Process each IP and store unique subnets
     for ip in "${ips[@]}"; do
-    # Get everything up to the last dot, then append .0/24
-    subnet="${ip%.*}.0/24"
-    # Only add if not already in array
-    if ! contains_element "$subnet" "${subnets_array[@]}"; then
-        subnets_array+=("$subnet")
-    fi
+        # Get everything up to the last dot, then append .0/24
+        subnet="${ip%.*}.0/24"
+        # Only add if not already in array
+        if ! contains_element "$subnet" "${subnets_array[@]}"; then
+            subnets_array+=("$subnet")
+        fi
     done
 
-    # Print results (optional)
-    for subnet in "${subnets_array[@]}"; do
-    echo -e "$subnet"
+    printf '%s\n' "${subnets_array[@]}"
+}
+
+# Function to add deny rules for all IPs
+add_deny_rules() {
+    local nacl_id=$1
+    local base_rule_number=$2
+    local domain=$3
+    local sub_rule=0
+    
+    echo -e "${BLUE}Adding deny rules for $domain${NC}"
+    
+    # Get all CIDR blocks for the domain
+    local cidr_blocks=($(get_cidr_blocks "$domain"))
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    for cidr_block in "${cidr_blocks[@]}"; do
+        # Skip empty entries
+        [ -z "$cidr_block" ] && continue
+        
+        local rule_number=$((base_rule_number + sub_rule))
+        echo -e "${BLUE}Adding rule $rule_number for CIDR: $cidr_block${NC}"
+        
+        aws ec2 create-network-acl-entry \
+            --network-acl-id "$nacl_id" \
+            --rule-number "$rule_number" \
+            --protocol -1 \
+            --rule-action deny \
+            --egress \
+            --cidr-block "$cidr_block"
+
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}Added deny rule for $domain ($cidr_block)${NC}"
+            RULE_NUMBERS["${rule_number}"]="$rule_number"
+            ((sub_rule++))
+        else
+            echo -e "${RED}Failed to add deny rule for $domain ($cidr_block)${NC}"
+        fi
+    done
+}
+
+revert_cell() {
+    local cell_id=$1
+    local nacl_id="${NACL_IDS[$cell_id]}"
+
+    if [ -n "$nacl_id" ]; then
+        echo -e "\n${YELLOW}Rolling back rules for Cell ${cell_id} on NACL ${nacl_id} ${NC}"
+        for base_rule_number in "${!DOMAINS[@]}"; do
+            domain="${DOMAINS[$base_rule_number]}"
+            domain="${domain/REGION/$REGION}"
+            delete_deny_rules "$nacl_id" "$base_rule_number" "$domain"
+        done
+    fi
+}
+
+delete_deny_rules() {
+    local nacl_id=$1
+    local base_rule_number=$2
+    local domain=$3
+    local sub_rule=0
+    
+    echo -e "${BLUE}Deleting deny rules for $nacl_id and $domain${NC}"
+    
+    # Get all CIDR blocks for the domain
+    local cidr_blocks=($(get_cidr_blocks "$domain"))
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    for cidr_block in "${cidr_blocks[@]}"; do
+        # Skip empty entries
+        [ -z "$cidr_block" ] && continue
+        
+        local rule_number=$((base_rule_number + sub_rule))
+        echo -e "${BLUE}Deleting rule $rule_number for CIDR: $cidr_block${NC}"
+        
+        aws ec2 delete-network-acl-entry \
+            --network-acl-id "$nacl_id" \
+            --rule-number "$rule_number" \
+            --egress
+
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}Deleted deny rule for $domain ($cidr_block)${NC}"
+            #RULE_NUMBERS["${rule_number}"]="$rule_number"
+            ((sub_rule++))
+        else
+            echo -e "${RED}Failed to delete deny rule for $domain ($cidr_block)${NC}"
+        fi
     done
 }
 
@@ -131,121 +229,23 @@ process_cell() {
     NACL_IDS["$cell_id"]="$nacl_id"
 }
 
-# Function to add deny rules for all IPs
-add_deny_rules() {
-    local nacl_id=$1
-    local base_rule_number=$2
-    local domain=$3
-    local sub_rule=0
-    
-    echo -e "${BLUE}Adding deny rules for $domain${NC}"
-    
-    # Get all CIDR blocks for the domain
-    local cidr_blocks=($(get_cidr_blocks "$domain"))
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-    
-    # Debug: Print captured CIDR blocks
-    echo -e "${BLUE}Captured CIDR blocks:${NC}"
-    printf '%s\n' "${cidr_blocks[@]}"
-    
-    for cidr_block in "${cidr_blocks[@]}"; do
-        # Skip empty entries
-        [ -z "$cidr_block" ] && continue
-        
-        local rule_number=$((base_rule_number + sub_rule))
-        echo -e "${BLUE}Adding rule $rule_number for CIDR: $cidr_block${NC}"
-        
-        aws ec2 create-network-acl-entry \
-            --network-acl-id "$nacl_id" \
-            --rule-number "$rule_number" \
-            --protocol -1 \
-            --rule-action deny \
-            --egress \
-            --cidr-block "$cidr_block"
-
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}Added deny rule for $domain ($cidr_block)${NC}"
-            RULE_NUMBERS["${rule_number}"]="$rule_number"
-            ((sub_rule++))
-        else
-            echo -e "${RED}Failed to add deny rule for $domain ($cidr_block)${NC}"
-        fi
+# Apply the blocks for each cell
+process_cells() {
+    # Process each cell
+    for cell_id in "${CELL_IDS[@]}"; do
+        process_cell "$cell_id"
     done
 }
-
-delete_deny_rules() {
-    local nacl_id=$1
-    local base_rule_number=$2
-    local domain=$3
-    local sub_rule=0
-    
-    echo -e "${BLUE}Deleting deny rules for $domain${NC}"
-    
-    # Get all CIDR blocks for the domain
-    local cidr_blocks=($(get_cidr_blocks "$domain"))
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-    
-    for cidr_block in "${cidr_blocks[@]}"; do
-        # Skip empty entries
-        [ -z "$cidr_block" ] && continue
-        
-        local rule_number=$((base_rule_number + sub_rule))
-        echo -e "${BLUE}Deleting rule $rule_number for CIDR: $cidr_block${NC}"
-        
-        aws ec2 delete-network-acl-entry \
-            --network-acl-id "$nacl_id" \
-            --rule-number "$rule_number" \
-            --egress
-
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}Deleted deny rule for $domain ($cidr_block)${NC}"
-            #RULE_NUMBERS["${rule_number}"]="$rule_number"
-            ((sub_rule++))
-        else
-            echo -e "${RED}Failed to delete deny rule for $domain ($cidr_block)${NC}"
-        fi
-    done
-}
-
-# Define CloudWatch logs domains to block with region placeholder
-declare -a DOMAINS
-DOMAINS[60]="logs.REGION.amazonaws.com"
-DOMAINS[80]="logs.REGION.api.aws"
-
-# Store NACL IDs for cleanup
-declare -a RULE_NUMBERS
 
 # Update the cleanup and rollback code
 cleanup() {
     echo -e "\n${YELLOW}Cleaning up NACL rules...${NC}"
     for cell_id in "${CELL_IDS[@]}"; do
-        nacl_id="${NACL_IDS[$cell_id]}"
-        if [ -n "$nacl_id" ]; then
-            echo -e "\n${YELLOW}Rolling back rules for Cell: ${cell_id}${NC}"
-            for base_rule_number in "${!DOMAINS[@]}"; do
-                domain="${DOMAINS[$base_rule_number]}"
-                domain="${domain/REGION/$REGION}"
-                delete_deny_rules "$nacl_id" "$base_rule_number" "$domain"
-            done
-        fi
+        revert_cell "$cell_id"
     done
     echo -e "\n${GREEN}Cleanup completed${NC}"
     exit 0
 }
-
-# Set up trap for cleanup on script interruption
-trap cleanup SIGINT SIGTERM
-
-# Process each cell
-for cell_id in "${CELL_IDS[@]}"; do
-    process_cell "$cell_id"
-done
-
-echo -e "\n${YELLOW}NACL updates complete${NC}"
 
 # Function to display countdown timer
 display_countdown() {
@@ -258,22 +258,18 @@ display_countdown() {
     printf "\n"
 }
 
+# Set up trap for cleanup on script interruption
+trap cleanup SIGINT SIGTERM
+
+process_cells
+
+echo -e "\n${YELLOW}NACL updates complete${NC}"
+
 # Display countdown timer for the specified duration
 display_countdown
 
 echo -e "${YELLOW}Experiment completed, NACL rule rollback started${NC}"
 
-# Delete deny rules for each cell
-for cell_id in "${CELL_IDS[@]}"; do
-    echo -e "\n${YELLOW}Rolling back rules for Cell: ${cell_id}${NC}"
-    nacl_id="${NACL_IDS[$cell_id]}"
-    if [ -n "$nacl_id" ]; then
-        for rule_number in "${!DOMAINS[@]}"; do
-            domain="${DOMAINS[$rule_number]}"
-            domain="${domain/REGION/$REGION}"
-            delete_deny_rules "$nacl_id" "$rule_number" "$domain"
-        done
-    fi
-done
+cleanup
 
 echo -e "${GREEN}Experiment completed. All NACL rules rollback complete.${NC}"

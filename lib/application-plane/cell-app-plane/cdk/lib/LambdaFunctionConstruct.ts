@@ -24,20 +24,9 @@ export class LambdaFunction extends Construct {
       removalPolicy: RemovalPolicy.DESTROY
     });
 
-    // Lambda function that processes requests from API Gateway to create a new Cell
-    // this.lambdaFunction = new Function(this, props.friendlyFunctionName, {
-    //   runtime: Runtime.PYTHON_3_12,
-    //   handler: props.lambdaHandler,
-    //   code: Code.fromAsset(props.lambdaAsset),
-    //   logGroup: logGroup,
-    //   environment: {
-    //     ...props.environmentVariables
-    //   }      
-    // });
-
     this.lambdaFunction = new lambda_python.PythonFunction(this, 'lambdaFunction', {
       entry: props.entry,
-      runtime: Runtime.PYTHON_3_12,
+      runtime: Runtime.PYTHON_3_13,
       handler: props.handler,
       index: props.index,
       logGroup: logGroup,

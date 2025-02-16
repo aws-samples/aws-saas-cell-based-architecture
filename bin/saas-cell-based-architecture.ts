@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-import { App } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag'
-import { Aspects } from 'aws-cdk-lib';
+import { Aspects, App, Environment } from 'aws-cdk-lib';
 import { CellManagementSystem } from '../lib/saas-management/cell-management-system/cell-management-system-stack';
 import { CommonCellRouter } from '../lib/application-plane/common-components/cell-router/common-cell-router-stack';
 import { CellProvisioningSystem } from '../lib/saas-management/cell-provisioning-system/cell-provisioning-system-stack';
 import { CommonObservability } from '../lib/application-plane/common-components/observability/observability-stack';
 import { Bridge } from '../lib/saas-management/bridge/bridge-stack';
 
+//app = cdk.App(context={ "@aws-cdk/core:bootstrapQualifier": helper_functions.get_qualifier()} )
 const app = new App();
 
 /*
@@ -24,7 +24,11 @@ Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }))
  * S3 bucket for application plane source archives and SSM Params
  */
 let bridgeStack = new Bridge(app, 'Bridge', {
-    description: "Contains integration components used for communication between the Cell Management System and the Cell Provisioning System."    
+    description: "Contains integration components used for communication between the Cell Management System and the Cell Provisioning System.",
+    env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: process.env.CDK_DEFAULT_REGION
+    },
 });
 
 /**
@@ -32,7 +36,10 @@ let bridgeStack = new Bridge(app, 'Bridge', {
  */
 let cellRouterStack = new CommonCellRouter(app, 'CellRouter', {
     description: "Thinnest possible routing later, used for deterministic routing of api requests into individual cells.",
-    s3LoggingBucketArn: bridgeStack.s3LogBucketArn
+    env: { 
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: 'us-east-1' 
+    },
 });
 
 /**
@@ -40,7 +47,12 @@ let cellRouterStack = new CommonCellRouter(app, 'CellRouter', {
  */
 let commonObservabilityStack = new CommonObservability(app, 'CommonObservability',{
     description: "Contains common observability resources for the solution",
-    distributionId: cellRouterStack.distributionId
+    distributionId: cellRouterStack.distributionId,
+    env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: process.env.CDK_DEFAULT_REGION
+    },
+    crossRegionReferences: true
 });
 
 /**
@@ -48,9 +60,14 @@ let commonObservabilityStack = new CommonObservability(app, 'CommonObservability
  */
 let cellManagementSystemStack = new CellManagementSystem(app, 'CellManagementSystem',{
     description: "Cell management system, used for creation and management of cells and tenants.",
-    s3ConfigBucketName: cellRouterStack.s3ConfigBucketName,
+    cellToTenantKvsArn: cellRouterStack.cellToTenantKvsArn,
     eventBusArn: bridgeStack.orchestrationEventBus.eventBusArn,
-    versionSsmParameter: bridgeStack.imageVersionParam
+    versionSsmParameter: bridgeStack.imageVersionParam,
+    crossRegionReferences: true,
+    env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: process.env.CDK_DEFAULT_REGION
+    },
 });
 
 /**
@@ -62,8 +79,9 @@ let cellProvisioningSystemStack = new CellProvisioningSystem(app, 'CellProvision
     cellManagementTable: cellManagementSystemStack.cellManagementTable,
     s3LoggingBucketArn: bridgeStack.s3LogBucketArn,
     s3CellSourceBucketArn: bridgeStack.cellSourceBucketArn,
-    aggregateHttp5xxAlarmName: commonObservabilityStack.aggregateHttp5xxAlarmName
+    aggregateHttp5xxAlarmName: commonObservabilityStack.aggregateHttp5xxAlarmName,
+    env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: process.env.CDK_DEFAULT_REGION
+    },
 });
-
-
-

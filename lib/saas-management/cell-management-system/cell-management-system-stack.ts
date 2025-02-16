@@ -6,33 +6,32 @@ import {
   TokenAuthorizer,
   LambdaIntegration,
   EndpointType,
-  Model,
   JsonSchemaVersion,
   JsonSchemaType,  
   MethodLoggingLevel,
   LogGroupLogDestination
 } from 'aws-cdk-lib/aws-apigateway';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as events from 'aws-cdk-lib/aws-events';
+import { Table, AttributeType, BillingMode, ProjectionType } from 'aws-cdk-lib/aws-dynamodb';
+import { Rule, Schedule, EventBus } from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { LogGroup, RetentionDays} from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import { IdentityProvider } from './identity-provider-construct';
 import { LambdaFunction  } from '../src/lambda-function-construct';
+import { KeyValueStore } from 'aws-cdk-lib/aws-cloudfront';
 import { CdkNagUtils } from './src/utils/cdk-nag-utils'
 
 export interface CellManagementSystemStackProps extends StackProps
 {
-  readonly s3ConfigBucketName: string;
+  readonly cellToTenantKvsArn: string;
   readonly eventBusArn: string;
-  readonly versionSsmParameter: ssm.StringParameter;
+  readonly versionSsmParameter: StringParameter;
 }
 
 export class CellManagementSystem extends Stack {
-  readonly cellManagementTable: dynamodb.Table;
+  readonly cellManagementTable: Table;
 
   constructor(scope: Construct, id: string, props: CellManagementSystemStackProps) {
     super(scope, id, props);
@@ -45,7 +44,8 @@ export class CellManagementSystem extends Stack {
     const identityProvider = new IdentityProvider(this, 'IdentityProvider');
     const idpDetails = identityProvider.identityDetails;
 
-    const cellManagementBus = events.EventBus.fromEventBusArn(this, 'eventBus', props.eventBusArn);
+    const cellManagementBus = EventBus.fromEventBusArn(this, 'eventBus', props.eventBusArn);
+    const cellToTenantKvs = KeyValueStore.fromKeyValueStoreArn(this, 'CellToTenantKvs', props.cellToTenantKvsArn);
     
     // Lambda function that processes requests from API Gateway to create a new Cell
     const authorizerLambda = new LambdaFunction(this, 'AuthorizerLambda', {
@@ -63,9 +63,9 @@ export class CellManagementSystem extends Stack {
     });
 
     // Create DynamoDB Table for Cell Management
-    const cellManagementTable = new dynamodb.Table(this, 'cellManagementTable', {
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    const cellManagementTable = new Table(this, 'cellManagementTable', {
+      partitionKey: { name: 'PK', type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
       pointInTimeRecovery: true,
     });
@@ -73,23 +73,20 @@ export class CellManagementSystem extends Stack {
     // Add Global Secondary Index
     cellManagementTable.addGlobalSecondaryIndex({
       indexName: 'TenantIDIndex',
-      partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
+      partitionKey: { name: 'tenant_id', type: AttributeType.STRING },
       // You can optionally add a sort key if needed
       // sortKey: { name: 'someOtherAttribute', type: dynamodb.AttributeType.STRING },
-      projectionType: dynamodb.ProjectionType.INCLUDE,
+      projectionType: ProjectionType.INCLUDE,
       nonKeyAttributes: ['cell_id', 'tenant_name', 'tenant_email', 'tenant_tier'],
     });
 
     cellManagementTable.addGlobalSecondaryIndex({
       indexName: 'TenantsByCellIdIndex',
-      partitionKey: { name: 'cell_id', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
-      projectionType: dynamodb.ProjectionType.INCLUDE,
+      partitionKey: { name: 'cell_id', type: AttributeType.STRING },
+      sortKey: { name: 'tenant_id', type: AttributeType.STRING },
+      projectionType: ProjectionType.INCLUDE,
       nonKeyAttributes: ['tenant_name', 'current_status'],
     });
-
-
-    const s3ConfigBucket = s3.Bucket.fromBucketName(this, 'requestRouterConfigBucket',props.s3ConfigBucketName)
 
     const restAPIAccessLogGroup = new LogGroup(this, 'APIGatewayAccessLogs', {
       removalPolicy: RemovalPolicy.DESTROY,
@@ -319,7 +316,7 @@ export class CellManagementSystem extends Stack {
     cellManagementTable.grantReadWriteData(assignTenantToCellLambda.lambdaFunction);
     cellManagementBus.grantPutEventsTo(assignTenantToCellLambda.lambdaFunction);
 
-    const policyStatement = new iam.PolicyStatement({
+    const policyStatement = new PolicyStatement({
       actions: ['ssm:GetParameter'],
       resources: [props.versionSsmParameter.parameterArn],
     });
@@ -479,11 +476,14 @@ export class CellManagementSystem extends Stack {
       entry: 'lib/saas-management/cell-management-system/src/lambdas/DeactivateTenant', 
       handler: 'handler', 
       environmentVariables: {
-        "S3_BUCKET_NAME": s3ConfigBucket.bucketName,
+        "CELL_ROUTER_KVS_ARN": cellToTenantKvs.keyValueStoreArn,
       },        
     });
 
-    s3ConfigBucket.grantReadWrite(deactivateTenantLambda.lambdaFunction);
+    deactivateTenantLambda.lambdaFunction.addToRolePolicy(new PolicyStatement({
+      actions: ['cloudfront-keyvaluestore:DeleteKey','cloudfront-keyvaluestore:DescribeKeyValueStore'],
+      resources: [cellToTenantKvs.keyValueStoreArn],
+    }));
 
     // Create a resource
     const deactivateTenantResource = api.root.addResource('DeactivateTenant');
@@ -545,12 +545,16 @@ export class CellManagementSystem extends Stack {
       entry: 'lib/saas-management/cell-management-system/src/lambdas/ActivateTenant', 
       handler: 'handler', 
       environmentVariables: {
-        S3_BUCKET_NAME: s3ConfigBucket.bucketName,
         CELL_MANAGEMENT_TABLE: cellManagementTable.tableArn,
+        CELL_ROUTER_KVS_ARN: cellToTenantKvs.keyValueStoreArn
       },        
     });
 
-    s3ConfigBucket.grantReadWrite(activateTenantLambda.lambdaFunction);
+    activateTenantLambda.lambdaFunction.addToRolePolicy(new PolicyStatement({
+      actions: ['cloudfront-keyvaluestore:PutKey','cloudfront-keyvaluestore:DescribeKeyValueStore'],
+      resources: [cellToTenantKvs.keyValueStoreArn],
+    }));
+
     cellManagementTable.grantReadData(activateTenantLambda.lambdaFunction);
 
     // Create a resource
@@ -597,8 +601,8 @@ export class CellManagementSystem extends Stack {
     cellManagementTable.grantReadData(capacityObserverLambda.lambdaFunction);
 
     // Create an EventBridge rule that runs every minute
-    const scheduledCapacityCheckRule = new events.Rule(this, 'ScheduleCapacityCheckRule', {
-      schedule: events.Schedule.expression('rate(1 minute)'),
+    const scheduledCapacityCheckRule = new Rule(this, 'ScheduleCapacityCheckRule', {
+      schedule: Schedule.expression('rate(1 minute)'),
       enabled: true
     });
 
@@ -617,7 +621,7 @@ export class CellManagementSystem extends Stack {
 
 
     // Create an EventBridge rule to process Metadata for Cells
-    const persistCellMetadataRule = new events.Rule(this, 'PersistCellMetadataRule', {
+    const persistCellMetadataRule = new Rule(this, 'PersistCellMetadataRule', {
       eventBus: cellManagementBus,
       eventPattern: {
         source: ['cellManagement.cellCreated','cellManagement.cellCreationError'],
@@ -642,7 +646,7 @@ export class CellManagementSystem extends Stack {
 
 
     // Create an EventBridge rule to process Metadata from Tenant creation
-    const persistTenantMetadataRule = new events.Rule(this, 'PersistTenantMetadataRule', {
+    const persistTenantMetadataRule = new Rule(this, 'PersistTenantMetadataRule', {
       eventBus: cellManagementBus,
       eventPattern: {
         source: ['cellManagement.tenantCreated','cellManagement.tenantCreationError'],

@@ -50,7 +50,8 @@ echo "ID_TOKEN: ${ID_TOKEN}"
 ROUTER_ENDPOINT=$(aws cloudformation describe-stacks \
     --stack-name "$CELL_ROUTER_STACK" \
     --query "Stacks[0].Outputs[?contains(OutputKey,'DistributionUrl')].OutputValue" \
-    --output text)
+    --output text \
+    --region us-east-1)
 echo "ROUTER_ENDPOINT: ${ROUTER_ENDPOINT}"
 
 PRODUCT_ID=$RANDOM
@@ -70,15 +71,11 @@ curl --request POST \
     --url "https://${ROUTER_ENDPOINT}/product/" \
     --header "Authorization: Bearer ${ID_TOKEN}" \
     --header 'content-type: application/json' \
-    --header "tenantid: ${TENANT_ID}" \
     --data "$DATA"
 
-RESPONSE=$(curl "https://${ROUTER_ENDPOINT}/product/" \
-    -H "Authorization: Bearer ${ID_TOKEN}" \
-    -H 'content-type: application/json' \
-    -H "tenantid: ${TENANT_ID}")
-
-echo "RESPONSE: ${RESPONSE}"
+curl "https://${ROUTER_ENDPOINT}/product/" \
+    --header "Authorization: Bearer ${ID_TOKEN}" \
+    --header 'content-type: application/json'
 
 echo "" # add newline    
 

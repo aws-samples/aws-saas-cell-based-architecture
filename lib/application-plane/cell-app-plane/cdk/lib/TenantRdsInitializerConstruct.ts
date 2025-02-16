@@ -50,26 +50,10 @@ export class TenantRDSInitializer extends Construct {
       resources: ['*'],
     }));    
 
-    // Lambda function that processes requests from API Gateway to create a new Cell
-    // const lambdaFunction = new lambda.Function (this, "TenantRDSInitializer", {
-    //   runtime: lambda.Runtime.PYTHON_3_12,
-    //   handler: "rds.handler",
-    //   code: lambda.Code.fromAsset("lambdas"),
-    //   logGroup: logGroup,
-    //   vpc: props.vpc,
-    //   vpcSubnets: props.vpc.selectSubnets( {
-    //     subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
-    //   }),
-    //   securityGroups: [fnSg],      
-    //   environment: {
-    //     DB_CRED_SECRET_NAME: props.dbCredSecretName
-    //   }
-    // });    
-    
     const lambdaFunction = new lambda_python.PythonFunction(this, `TenantRDSInitializer${id}`, {
       entry: path.join(__dirname, '../lambdas'), 
       index: 'rds.py',
-      runtime: lambda.Runtime.PYTHON_3_12,
+      runtime: lambda.Runtime.PYTHON_3_13,
       handler: "handler",
       logGroup: logGroup,
       vpc: props.vpc,

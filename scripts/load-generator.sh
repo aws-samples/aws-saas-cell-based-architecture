@@ -65,7 +65,7 @@ DURATION=${DURATION:-$DEFAULT_DURATION}
 # Function to draw table header
 draw_table_header() {
     echo -e "\n┌────────────┬────────────┬────────────┬────────────┬────────────┐"
-    echo -e "│  ${BLUE}Cell ID${NC}   │ ${BLUE}Tenat ID${NC}   | ${GREEN}Successful${NC} │   ${YELLOW}4XX${NC}      │   ${RED}5XX${NC}      │"
+    echo -e "│  ${BLUE}Cell ID${NC}   │ ${BLUE}Tenant ID${NC}  | ${GREEN}Successful${NC} │   ${YELLOW}4XX${NC}      │   ${RED}5XX${NC}      │"
     echo -e "├────────────┼────────────┼────────────┼────────────┼────────────┤"
 }
 

@@ -13,6 +13,10 @@ export class CdkNagUtils {
         reason: 'CloudWatch Container Insights not required for tracking microservice performance.'
       },
       {
+        id: 'AwsSolutions-COG3',
+        reason: 'AdvancedSecurityMode: Advanced mode is deprecated.'
+      },
+      {
         id: 'AwsSolutions-COG4',
         reason: 'Cognito user pool authorizer unnecessary; Custom request authorizer is being used.'
       },

@@ -61,8 +61,9 @@ def handler(event, context):
         generated_tenant_id = generated_tenant_id_prefix + "".join(random.SystemRandom().choice(string.ascii_lowercase + string.digits) for _ in range(8))
 
         # Get next available listener priority for this cell
-        priority_response = dynamodb.update_item(
-            TableName=cell_table_name,
+        cell_management_table = os.environ.get('CELL_MANAGEMENT_TABLE')
+        ddb_table = dynamodb.Table(cell_management_table)
+        priority_response = ddb_table.update_item(
             Key={
                 'PK': cell_id
             },

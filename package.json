@@ -1,6 +1,6 @@
 {
   "name": "saas-cell-based-architecture",
-  "version": "0.1.1",
+  "version": "1.2.0",
   "bin": {
     "control-plane": "bin/saas-cell-based-architecture.js"
   },

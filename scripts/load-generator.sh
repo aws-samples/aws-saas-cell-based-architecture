@@ -65,7 +65,7 @@ DURATION=${DURATION:-$DEFAULT_DURATION}
 # Function to draw table header
 draw_table_header() {
     echo -e "\n┌────────────┬────────────┬────────────┬────────────┬────────────┐"
-    echo -e "│  ${BLUE}Cell ID${NC}   │ ${BLUE}Tenat ID${NC}   | ${GREEN}Successful${NC} │   ${YELLOW}4XX${NC}      │   ${RED}5XX${NC}      │"
+    echo -e "│  ${BLUE}Cell ID${NC}   │ ${BLUE}Tenant ID${NC}  | ${GREEN}Successful${NC} │   ${YELLOW}4XX${NC}      │   ${RED}5XX${NC}      │"
     echo -e "├────────────┼────────────┼────────────┼────────────┼────────────┤"
 }
 
@@ -129,7 +129,7 @@ make_request() {
     
     local timestamp=$(date +%s | tail -c 7)
     local random=$((RANDOM % 1000))
-    local product_id=$((timestamp * 1000 + random))
+    local product_id=$((10#$timestamp * 1000 + random))
 
     local response=$(curl -s -w "\n%{http_code}" -X POST \
         --url "https://${distribution_url}/product" \

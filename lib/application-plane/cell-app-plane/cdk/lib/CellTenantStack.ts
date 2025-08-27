@@ -178,34 +178,15 @@ export class CellTenantStack extends cdk.Stack {
             healthCheck: healthCheck
         });
 
-        // Add Listener Rule for HTTP Header and Path '/upload'
+        // Add tenant-specific listener rule
         listener.addAction('ListenerRuleUpload', {
-            priority: tenantPriorityBase + 1,
+            priority: tenantPriorityBase,
             conditions: [
                 elbv2.ListenerCondition.httpHeader('tenantId', [tenantId]),
                 elbv2.ListenerCondition.pathPatterns(['/product', '/product/*'])
             ],
             action: elbv2.ListenerAction.forward([targetGroup])
         });
-
-        // Add Listener Rule for HTTP Header and Path '/health'
-        listener.addAction('ListenerRuleSvcHealth', {
-            priority:  tenantPriorityBase + 2,
-            conditions: [
-                elbv2.ListenerCondition.pathPatterns(['/health'])
-            ],
-            action: elbv2.ListenerAction.forward([targetGroup])
-        });
-
-        // Add Listener Rule for '/'
-        listener.addAction('ListenerRuleDefault', {
-            priority:  tenantPriorityBase + 3,
-            conditions: [
-                elbv2.ListenerCondition.pathPatterns(['/'])
-            ],
-            action: elbv2.ListenerAction.forward([targetGroup])
-        });                
-
 
         //provision database
         const tenantSecret = new secretsmanager.Secret(

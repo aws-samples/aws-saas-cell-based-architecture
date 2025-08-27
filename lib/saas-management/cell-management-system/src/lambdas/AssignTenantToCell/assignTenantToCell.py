@@ -56,12 +56,24 @@ def handler(event, context):
     cell_status = check_cell_status(cell_information)
     if cell_status.get('statusCode') == 200:
 
-        # ID's need to start with a letter
+        # Generate tenant ID
         generated_tenant_id_prefix = random.SystemRandom().choice(string.ascii_lowercase)
-        # Generate a random string containing lowercase letters and numbers only
         generated_tenant_id = generated_tenant_id_prefix + "".join(random.SystemRandom().choice(string.ascii_lowercase + string.digits) for _ in range(8))
 
-        new_tenant_listener_priority = str(int(cell_information.get('cell_utilization')) * 3)
+        # Get next available listener priority for this cell
+        cell_management_table = os.environ.get('CELL_MANAGEMENT_TABLE')
+        ddb_table = dynamodb.Table(cell_management_table)
+        priority_response = ddb_table.update_item(
+            Key={
+                'PK': cell_id
+            },
+            UpdateExpression='ADD tenant_priority_counter :inc',
+            ExpressionAttributeValues={
+                ':inc': 10
+            },
+            ReturnValues='UPDATED_NEW'
+        )
+        new_tenant_listener_priority = str(int(priority_response['Attributes']['tenant_priority_counter']))
 
         image_version_param = os.environ.get('IMAGE_VER_SSM_PARAM_NAME')
         # Get Latest Product Container Tag

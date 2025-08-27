@@ -9,10 +9,14 @@ export class IdentityProvider extends Construct {
     super(scope, id);
 
     const tenantUserPool = new aws_cognito.UserPool(this, 'TenantUserPool', {
-      autoVerify: { email: true },
+      selfSignUpEnabled: true,
+      userVerification: {
+        emailSubject: 'Verify your email',
+        emailBody: 'Thanks for signing up! Your verification code is {####}',
+        emailStyle: aws_cognito.VerificationEmailStyle.CODE,
+      },
       accountRecovery: aws_cognito.AccountRecovery.EMAIL_ONLY,
       removalPolicy: RemovalPolicy.DESTROY,
-      advancedSecurityMode: aws_cognito.AdvancedSecurityMode.ENFORCED,
       standardAttributes: {
         email: {
           required: true,
@@ -26,6 +30,7 @@ export class IdentityProvider extends Construct {
         requireSymbols: true,
         requireDigits: true
       },
+      userPoolName: 'tenant-user-pool',
       customAttributes: {
         tenantId: new aws_cognito.StringAttribute({ mutable: true }),
         role: new aws_cognito.StringAttribute({ mutable: true }),

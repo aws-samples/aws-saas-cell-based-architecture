@@ -188,6 +188,24 @@ export class CellStack extends Stack {
       }
     });
 
+    // Add health endpoint rule
+    listener.addAction('CellHealthRule', {
+      priority: 1,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns(['/health'])
+      ],
+      action: elbv2.ListenerAction.forward([albTarget])
+    });
+
+    // Add default catch-all rule
+    listener.addAction('CellDefaultRule', {
+      priority: 50000,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns(['/'])
+      ],
+      action: elbv2.ListenerAction.forward([albTarget])
+    });
+
     // Allow incoming traffic from the ALB to the ASG
     asg.connections.allowFrom(alb, ec2.Port.tcpRange(32768, 65535), 'allow incoming traffic from ALB');
 

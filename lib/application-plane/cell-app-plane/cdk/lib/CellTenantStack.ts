@@ -137,7 +137,11 @@ export class CellTenantStack extends cdk.Stack {
                 AWS_ACCOUNT_ID: accountId,
                 AWS_REGION: region
             },
-            logging: ecs.LogDriver.awsLogs({ streamPrefix: 'product', logRetention: 7 })
+            logging: ecs.LogDriver.awsLogs({ 
+                streamPrefix: 'product', 
+                logRetention: 7,
+                mode: ecs.AwsLogDriverMode.BLOCKING 
+            })
         });
 
         // Add port mapping to the container

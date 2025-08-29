@@ -1,6 +1,6 @@
 {
   "name": "cell-app-plane",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "bin": {
     "cell-app-plane": "bin/app.ts"
   },

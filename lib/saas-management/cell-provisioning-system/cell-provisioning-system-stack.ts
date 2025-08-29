@@ -72,7 +72,7 @@ export class CellProvisioningSystem extends Stack {
         phases: {
           install: {
             'runtime-versions': {
-              nodejs: 18,
+              nodejs: 22,
             },
             commands: [
               `ACCOUNT_ID=${this.account}`,
@@ -162,7 +162,7 @@ export class CellProvisioningSystem extends Stack {
         phases: {
           install: {
             'runtime-versions': {
-              nodejs: 18,
+              nodejs: 22,
             },
             commands: [
               'echo CELL_ID=$CELL_ID',
@@ -334,7 +334,7 @@ export class CellProvisioningSystem extends Stack {
         phases: {
           install: {
             'runtime-versions': {
-              nodejs: 18,
+              nodejs: 22,
             },
             commands: [
               'echo CELL_ID=$CELL_ID',

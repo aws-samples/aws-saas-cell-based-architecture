@@ -129,7 +129,7 @@ make_request() {
     
     local timestamp=$(date +%s | tail -c 7)
     local random=$((RANDOM % 1000))
-    local product_id=$((timestamp * 1000 + random))
+    local product_id=$((10#$timestamp * 1000 + random))
 
     local response=$(curl -s -w "\n%{http_code}" -X POST \
         --url "https://${distribution_url}/product" \

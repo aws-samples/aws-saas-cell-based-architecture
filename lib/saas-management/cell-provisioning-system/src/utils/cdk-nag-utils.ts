@@ -27,6 +27,10 @@ export class CdkNagUtils {
       {
         id: 'AwsSolutions-ECR1',
         reason: 'Public access to ECR is required for this solution'
+      },
+      {
+        id: 'AwsSolutions-L1',
+        reason: 'Ignoring, for stability of workshop'
       }
     ]);
   }

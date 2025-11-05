@@ -16,6 +16,10 @@ export class CdkNagUtils {
         id: 'AwsSolutions-APIG4',
         reason: 'Custom request authorizer is being used.'
       },
+      {
+        id: 'AwsSolutions-L1',
+        reason: 'Ignoring, for stability of workshop'
+      }
     ]);
   }
 }

@@ -39,6 +39,10 @@ export class CdkNagUtils {
       {
         id: 'AwsSolutions-COG1',
         reason: 'Default password is sufficient for a workshop with temporary users'
+      },
+      {
+        id: 'AwsSolutions-L1',
+        reason: 'Ignoring, for stability of workshop'
       }
     ]);
   }

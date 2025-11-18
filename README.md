@@ -27,7 +27,7 @@ Whilst intended to be used primarily for the workshop, the code can be used inde
 
 `sh ./scripts/test_product.sh o2345v9 mhmuy9t2p`
 
-6. If you make any changes to the docker image then run below command to re-upload the app plane source. This will trigger the deployment pipeline.
+6. (Optional) If you make any changes to the docker image then run below command to re-upload the app plane source. This will trigger the deployment pipeline.
 
 `sh ./scripts/package-app-plane.sh`
 

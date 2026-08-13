@@ -6,8 +6,7 @@ import psycopg
 from models.product_models import Product
 import json
 import logging
-from jose import jwk, jwt
-from jose.utils import base64url_decode
+import jwt
 import string
 import random
 
@@ -29,8 +28,8 @@ def get_tenant_id(request):
     if not bearer_token:
         return None
     token = bearer_token.split(" ")[1]
-    # get the tenant id from the token
-    tenant_id = jwt.get_unverified_claims(token)['custom:tenantId']
+    # get the tenant id from the token without verifying the signature
+    tenant_id = jwt.decode(token, options={"verify_signature": False})['custom:tenantId']
     return tenant_id
 
 def get_tenant_secret(tenant_id):
@@ -115,7 +114,7 @@ def get_products():
             return jsonify({"error": "tenantId header is required"}), 400
         
         connection = tenant_connection(tenant_id)                
-        cur = connection.execute("SELECT product_id, product_name, product_description, product_price, tenant_id FROM app.products WHERE tenant_id = '{0}'".format(tenant_id))
+        cur = connection.execute("SELECT product_id, product_name, product_description, product_price, tenant_id FROM app.products WHERE tenant_id = %s", (tenant_id,))
         results = cur.fetchall()
         app.logger.info(results)
         products=[]

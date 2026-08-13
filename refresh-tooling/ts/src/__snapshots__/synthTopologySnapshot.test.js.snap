@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`cdk synth topology snapshot (Req 16.1, 16.2, 16.4) documents the allow-list of permitted upgrade-forced diffs (Req 16.4): upgrade-forced-diff-allowlist 1`] = `
+[
+  "asset-hashes: stackTemplateAssetObjectUrl, S3 asset keys, Lambda/asset content hashes",
+  "bootstrap-version: requiresBootstrapStackVersion, bootstrapStackVersionSsmParameter",
+  "cdk-metadata: AWS::CDK::Metadata Analytics string and aws:cdk:version metadata",
+  "feature-flag-report: cdk:feature-flag-report assembly artifact",
+  "tree-artifact: cdk:tree assembly artifact",
+  "environment-account: aws://<account>/<region> reduced to region only",
+  "per-cell-context-id: App_Plane_App Cell-<cellId> stack name (and dependency edges) reduced to Cell-<cell>",
+]
+`;

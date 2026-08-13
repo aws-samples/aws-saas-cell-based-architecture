@@ -4,12 +4,11 @@
 import re
 import json
 import os
-import time
 import urllib.request
 import logging
 
-from jose import jwk, jwt
-from jose.utils import base64url_decode
+import jwt
+from jwt.algorithms import RSAAlgorithm
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -78,7 +77,7 @@ class AuthPolicy(object):
     """The principal used for the policy, this should be a unique identifier for the end user."""
     version = "2012-10-17"
     """The policy version used for the evaluation. This should always be '2012-10-17'"""
-    pathRegex = "^[/.a-zA-Z0-9-\*]+$"
+    pathRegex = r"^[/.a-zA-Z0-9-\*]+$"
     """The regular expression used to validate resource paths for the policy"""
 
     """these are the internal lists of allowed and denied methods. These are lists
@@ -244,7 +243,11 @@ def validateJWT(event):
 
 def __validateCognitoJWT(token, app_client_id, keys):
     # get the kid from the headers prior to verification
-    headers = jwt.get_unverified_headers(token)
+    try:
+        headers = jwt.get_unverified_header(token)
+    except jwt.PyJWTError:
+        logger.info('Unable to parse token headers')
+        return False
     kid = headers['kid']
     # search for the kid in the downloaded public keys
     key_index = -1
@@ -255,29 +258,29 @@ def __validateCognitoJWT(token, app_client_id, keys):
     if key_index == -1:
         logger.info('Public key not found in jwks.json')
         return False
-    # construct the public key
-    public_key = jwk.construct(keys[key_index])
-    # get the last two sections of the token,
-    # message and signature (encoded in base64)
-    message, encoded_signature = str(token).rsplit('.', 1)
-    # decode the signature
-    decoded_signature = base64url_decode(encoded_signature.encode('utf-8'))
-    # verify the signature
-    if not public_key.verify(message.encode("utf8"), decoded_signature):
-        logger.info('Signature verification failed')
-        return False
-    logger.info('Signature successfully verified')
-    # since we passed the verification, we can now safely
-    # use the unverified claims
-    claims = jwt.get_unverified_claims(token)
-    # additionally we can verify the token expiration
-    if time.time() > claims['exp']:
+    # construct the public key from the matching JWK
+    public_key = RSAAlgorithm.from_jwk(json.dumps(keys[key_index]))
+    # verify the signature, expiration, and audience in a single decode call
+    try:
+        claims = jwt.decode(
+            token,
+            public_key,
+            algorithms=['RS256'],
+            audience=app_client_id,
+        )
+    except jwt.ExpiredSignatureError:
         logger.info('Token is expired')
         return False
-    # and the Audience  (use claims['client_id'] if verifying an access token)
-    if claims['aud'] != app_client_id:
+    except jwt.InvalidAudienceError:
         logger.info('Token was not issued for this audience')
         return False
+    except jwt.InvalidSignatureError:
+        logger.info('Signature verification failed')
+        return False
+    except jwt.PyJWTError:
+        logger.info('Token validation failed')
+        return False
+    logger.info('Signature successfully verified')
     # now we can use the claims
     logger.info(claims)
     return claims

@@ -67,7 +67,7 @@ export class CellManagementSystem extends Stack {
       partitionKey: { name: 'PK', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
     });
 
     // Add Global Secondary Index

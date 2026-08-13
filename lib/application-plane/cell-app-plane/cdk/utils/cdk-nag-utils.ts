@@ -17,8 +17,20 @@ export class CdkNagUtils {
         reason: 'AdvancedSecurityMode: Advanced mode is deprecated.'
       },
       {
+        id: 'AwsSolutions-COG8',
+        reason: 'Cognito plus tier / feature plan (advanced security features) is unnecessary for a workshop. Tenant users and accounts are shortlived, so malicious sign-in detection and unsafe-password protection are not warranted; remaining on the default tier preserves existing behavior and cost.'
+      },
+      {
+        id: 'AwsSolutions-COG2',
+        reason: 'MFA cannot be leveraged for a workshop. Tenant users and accounts are shortlived, and MFA is unnecessary/impractical.'
+      },
+      {
         id: 'AwsSolutions-COG4',
         reason: 'Cognito user pool authorizer unnecessary; Custom request authorizer is being used.'
+      },
+      {
+        id: 'AwsSolutions-APIG3',
+        reason: 'WAFv2 is not required.'
       },
       {
         id: 'AwsSolutions-IAM4',

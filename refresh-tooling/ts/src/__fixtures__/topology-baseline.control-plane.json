@@ -1,0 +1,118 @@
+{
+  "app": "control-plane",
+  "stacks": [
+    {
+      "name": "Bridge",
+      "type": "aws:cloudformation:stack",
+      "region": "ap-southeast-2",
+      "stackDependencies": [],
+      "resourceTypeCounts": {
+        "AWS::CDK::Metadata": 1,
+        "AWS::Events::EventBus": 1,
+        "AWS::IAM::Role": 1,
+        "AWS::Lambda::Function": 1,
+        "AWS::S3::Bucket": 2,
+        "AWS::S3::BucketPolicy": 2,
+        "AWS::SSM::Parameter": 1,
+        "Custom::S3AutoDeleteObjects": 2
+      }
+    },
+    {
+      "name": "CellManagementSystem",
+      "type": "aws:cloudformation:stack",
+      "region": "ap-southeast-2",
+      "stackDependencies": [
+        "Bridge",
+        "CellRouter"
+      ],
+      "resourceTypeCounts": {
+        "AWS::ApiGateway::Account": 1,
+        "AWS::ApiGateway::Authorizer": 1,
+        "AWS::ApiGateway::Deployment": 1,
+        "AWS::ApiGateway::Method": 16,
+        "AWS::ApiGateway::Model": 4,
+        "AWS::ApiGateway::RequestValidator": 8,
+        "AWS::ApiGateway::Resource": 8,
+        "AWS::ApiGateway::RestApi": 1,
+        "AWS::ApiGateway::Stage": 1,
+        "AWS::CDK::Metadata": 1,
+        "AWS::Cognito::UserPool": 1,
+        "AWS::Cognito::UserPoolClient": 1,
+        "AWS::DynamoDB::Table": 1,
+        "AWS::Events::Rule": 3,
+        "AWS::IAM::Policy": 23,
+        "AWS::IAM::Role": 14,
+        "AWS::Lambda::Function": 13,
+        "AWS::Lambda::Permission": 20,
+        "AWS::Logs::LogGroup": 13,
+        "Custom::CrossRegionExportReader": 1
+      }
+    },
+    {
+      "name": "CellProvisioningSystem",
+      "type": "aws:cloudformation:stack",
+      "region": "ap-southeast-2",
+      "stackDependencies": [
+        "Bridge",
+        "CellManagementSystem"
+      ],
+      "resourceTypeCounts": {
+        "AWS::CDK::Metadata": 1,
+        "AWS::CodeBuild::Project": 3,
+        "AWS::CodePipeline::Pipeline": 1,
+        "AWS::ECR::Repository": 1,
+        "AWS::Events::Rule": 2,
+        "AWS::IAM::Policy": 18,
+        "AWS::IAM::Role": 19,
+        "AWS::KMS::Key": 1,
+        "AWS::Lambda::Function": 6,
+        "AWS::Lambda::LayerVersion": 1,
+        "AWS::Logs::LogGroup": 6,
+        "AWS::S3::Bucket": 1,
+        "AWS::S3::BucketPolicy": 1,
+        "AWS::SQS::Queue": 1,
+        "AWS::SQS::QueuePolicy": 1,
+        "AWS::StepFunctions::StateMachine": 3,
+        "Custom::CDKBucketDeployment": 1,
+        "Custom::S3AutoDeleteObjects": 1
+      }
+    },
+    {
+      "name": "CellRouter",
+      "type": "aws:cloudformation:stack",
+      "region": "us-east-1",
+      "stackDependencies": [],
+      "resourceTypeCounts": {
+        "AWS::CDK::Metadata": 1,
+        "AWS::CloudFront::CachePolicy": 1,
+        "AWS::CloudFront::Distribution": 1,
+        "AWS::CloudFront::Function": 1,
+        "AWS::CloudFront::KeyValueStore": 1,
+        "AWS::CloudFront::OriginAccessControl": 1,
+        "AWS::IAM::Role": 2,
+        "AWS::Lambda::Function": 2,
+        "AWS::S3::Bucket": 2,
+        "AWS::S3::BucketPolicy": 2,
+        "Custom::CrossRegionExportWriter": 1,
+        "Custom::S3AutoDeleteObjects": 2
+      }
+    },
+    {
+      "name": "CommonObservability",
+      "type": "aws:cloudformation:stack",
+      "region": "ap-southeast-2",
+      "stackDependencies": [],
+      "resourceTypeCounts": {
+        "AWS::CDK::Metadata": 1,
+        "AWS::CloudWatch::Dashboard": 1
+      }
+    }
+  ],
+  "deploymentOrder": [
+    "Bridge",
+    "CellRouter",
+    "CommonObservability",
+    "CellManagementSystem",
+    "CellProvisioningSystem"
+  ]
+}

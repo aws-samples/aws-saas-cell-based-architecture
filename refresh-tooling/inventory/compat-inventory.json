@@ -1,0 +1,32 @@
+{
+  "feature": "codebase-modernization-refresh",
+  "task": "4.1 Construct-API Remediator inventory",
+  "awsCdkLib": "2.260.0",
+  "generatedFrom": "tsc --noEmit + cdk synth --quiet (both apps), captured in inventory/raw/",
+  "apps": [
+    {
+      "app": "control-plane",
+      "entries": [
+        {
+          "file": "lib/saas-management/cell-management-system/cell-management-system-stack.ts",
+          "construct": "aws-cdk-lib.aws_dynamodb.TableOptions#pointInTimeRecovery",
+          "message": "is deprecated. use `pointInTimeRecoverySpecification` instead. This API will be removed in the next major release.",
+          "kind": "deprecation",
+          "resolution": "use pointInTimeRecoverySpecification instead"
+        },
+        {
+          "file": "lib/saas-management/cell-provisioning-system/app-plane-staggered-deployment-construct.ts",
+          "construct": "aws-cdk-lib.aws_lambda.FunctionOptions#logRetention",
+          "message": "is deprecated. use `logGroup` instead. This API will be removed in the next major release.",
+          "kind": "deprecation",
+          "resolution": "use logGroup instead"
+        }
+      ]
+    },
+    {
+      "app": "app-plane",
+      "entries": []
+    }
+  ],
+  "totalEntries": 2
+}

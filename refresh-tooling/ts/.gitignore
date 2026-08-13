@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+# Compiled TypeScript output — .ts are the sources; ts-jest runs from source
+src/*.js
+src/*.d.ts

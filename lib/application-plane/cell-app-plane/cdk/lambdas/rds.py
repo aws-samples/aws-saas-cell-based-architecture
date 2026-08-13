@@ -64,11 +64,18 @@ def handler(event, context):
             'results': "tenant created"
         }
     except Exception as err:
-        return {
-            'status': 'ERROR',
-            'err': str(err),
-            'message': str(err)
-        }
+        # Do NOT swallow provisioning errors. Returning a normal response (even
+        # one tagged status "ERROR") makes the invoking Step Functions task
+        # SUCCEED, which previously allowed a FAILED tenant provisioning to be
+        # marked "available" — e.g. a CREATE ROLE failure went unnoticed. Log
+        # and re-raise so the Lambda invocation fails and the state machine
+        # surfaces the failure instead of reporting a false success.
+        print(
+            f"Tenant provisioning failed "
+            f"(tenantState={event.get('tenantState')}, "
+            f"tenantId={event.get('tenantId')}): {err}"
+        )
+        raise
 
 def run_provisioning_script(connection, sql_script, tenant_id, tenant_password):
     """Execute the tenant provisioning script with hardened SQL construction.
@@ -81,14 +88,13 @@ def run_provisioning_script(connection, sql_script, tenant_id, tenant_password):
       psycopg.sql.Identifier for safe, correctly-quoted composition.
       MAINTAINER REVIEW (Req 9.3): these identifier statements are flagged
       for review.
-    * `<tenant_pwd>` — a value position (the role password). It is passed as a
-      driver-bound parameter rather than interpolated into the SQL text
-      (Req 9.1).
+    * `<tenant_pwd>` — a value position (the role password). PostgreSQL does not
+      accept a bind parameter in the CREATE ROLE ... PASSWORD clause, so it is
+      composed with psycopg.sql.Literal, which safely quotes/escapes the value
+      as a string literal (injection-safe, not raw interpolation) (Req 9.1).
 
-    Statements are executed individually and in their original order so the
-    password can be passed as a bound parameter (the extended query protocol
-    used for parameterized queries permits a single command per execute).
-    The effective SQL executed is equivalent to the original script.
+    Statements are executed individually and in their original order. The
+    effective SQL executed is equivalent to the original script.
     """
     tenant_ident = sql.Identifier(tenant_id)
 
@@ -98,14 +104,17 @@ def run_provisioning_script(connection, sql_script, tenant_id, tenant_password):
         has_identifier = '<tenant_id>' in stmt
 
         if has_password:
-            # Value position -> bound parameter (the quoted '<tenant_pwd>'
-            # placeholder, including its surrounding quotes, becomes a single
-            # bound parameter). Identifier position -> safe identifier.
+            # The role password is a value position, but PostgreSQL does NOT
+            # accept a bind parameter in the CREATE ROLE ... PASSWORD clause —
+            # it requires a string literal. Compose it with psycopg.sql.Literal,
+            # which safely quotes/escapes the value (injection-safe, not raw
+            # interpolation) while satisfying the grammar. Identifier position
+            # -> safe identifier via sql.Identifier.
             composed = sql.SQL(
                 stmt.replace('<tenant_id>', '{tenant_ident}')
                     .replace("'<tenant_pwd>'", '{tenant_pwd}')
-            ).format(tenant_ident=tenant_ident, tenant_pwd=sql.Placeholder())
-            query(connection, composed, (tenant_password,))
+            ).format(tenant_ident=tenant_ident, tenant_pwd=sql.Literal(tenant_password))
+            query(connection, composed)
         elif has_identifier:
             composed = sql.SQL(
                 stmt.replace('<tenant_id>', '{tenant_ident}')

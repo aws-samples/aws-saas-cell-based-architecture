@@ -411,3 +411,37 @@ def test_product_imports_and_routes_execute(monkeypatch):
     assert listing.status_code == 200
     assert listing.get_json() == []
     assert module.psycopg.connect.called, "expected tenant DB connection attempt"
+
+
+def test_rds_handler_propagates_provisioning_error(monkeypatch):
+    """A provisioning failure must PROPAGATE (raise), not be swallowed.
+
+    Regression guard: previously the handler caught every exception and
+    returned a normal ``{"status": "ERROR"}`` response, so the invoking Step
+    Functions task succeeded and a failed tenant provisioning was marked
+    "available" (e.g. a CREATE ROLE failure went unnoticed). The handler must
+    now re-raise so the state machine surfaces the failure.
+    """
+    source = RDS_PY
+    _boto3_mock, _psycopg_mock = _install_aws_db_mocks(monkeypatch)
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.setenv("DB_CRED_SECRET_NAME", "db-admin-secret")
+
+    module = _load_module_from_path(source, "smoke_rds_error")
+    module.secrets_manager.get_secret_value.return_value = {
+        "SecretString": json.dumps(
+            {"password": "pw", "username": "admin", "host": "db.local", "port": 5432}
+        )
+    }
+    # Simulate a provisioning failure at the DB layer.
+    module.psycopg.connect.side_effect = RuntimeError("boom: provisioning failed")
+
+    with pytest.raises(Exception):  # noqa: PT011 - any propagation is acceptable
+        module.handler(
+            {
+                "tenantState": "PROVISION",
+                "tenantId": "tenant_x",
+                "tenantSecretName": "tenant-x-secret",
+            },
+            None,
+        )

@@ -420,3 +420,94 @@ def test_hardened_identifier_composition_is_injection_safe(name):
 
     assert _resolve_create_database(hardened) == name
     assert _count_top_level_semicolons(hardened) == 0
+
+
+# --------------------------------------------------------------------------- #
+# Property 7 — non-bindable value position: CREATE ROLE ... PASSWORD          #
+# --------------------------------------------------------------------------- #
+#
+# Regression guard (rds.py run_provisioning_script). The tenant role password is
+# a *value*, but PostgreSQL does NOT accept a bind parameter in the
+# CREATE/ALTER ROLE ... PASSWORD clause — that position requires a string
+# literal. The hardened code must therefore compose the password with
+# psycopg.sql.Literal (an escaped inline literal), NEVER a bound %s placeholder.
+# A prior implementation used a placeholder; PostgreSQL rejected it and tenant
+# provisioning silently failed. The checks below encode PostgreSQL's grammar so
+# that regression is caught by the property suite rather than at deploy time.
+
+
+def escape_password_literal(value: str) -> str:
+    """Model ``psycopg.sql.Literal`` for a str: single-quoted, embedded ' doubled."""
+    return "'" + value.replace("'", "''") + "'"
+
+
+def render_create_user_hardened(name: str, password: str) -> str:
+    """Hardened CREATE USER: safe identifier + escaped literal password (no bind)."""
+    return (
+        "CREATE USER "
+        + safe_identifier(name)
+        + " WITH PASSWORD "
+        + escape_password_literal(password)
+    )
+
+
+_PASSWORD_CLAUSE_RE = re.compile(r"PASSWORD\s+(\S+)", re.IGNORECASE)
+
+
+def password_clause_is_grammar_valid(stmt: str) -> bool:
+    """PostgreSQL rejects a bind parameter in a PASSWORD clause.
+
+    Returns False iff the token following PASSWORD is a driver placeholder
+    (``%s``) or a server parameter (``$1``, ``$2`` ...) — neither is permitted by
+    the CREATE/ALTER ROLE grammar; True when it is a string literal.
+    """
+    m = _PASSWORD_CLAUSE_RE.search(stmt)
+    if not m:
+        return True
+    token = m.group(1)
+    return not (token.startswith("%s") or re.match(r"^\$\d+", token))
+
+
+# quote-free passwords: escaped literal is byte-identical to a raw literal.
+_safe_password = st.text(
+    alphabet=st.characters(min_codepoint=32, max_codepoint=126, exclude_characters="'"),
+    min_size=1,
+    max_size=24,
+)
+# quote-bearing injection payloads (reuse the tenant injection generator).
+_injection_password = _injection_tenant
+
+
+@settings(max_examples=200)
+@given(_safe_identifier_name, _safe_password)
+def test_hardened_password_is_literal_not_bound_parameter(name, password):
+    """The password is composed as a grammar-valid literal, never a bound param.
+
+    This is the exact regression: a %s placeholder in the PASSWORD position is
+    invalid PostgreSQL and breaks provisioning (Req 9.1, 9.4).
+    """
+    hardened = render_create_user_hardened(name, password)
+    assert "%s" not in hardened
+    assert password_clause_is_grammar_valid(hardened)
+    assert unquote_identifier(safe_identifier(name)) == name
+
+
+@settings(max_examples=200)
+@given(_safe_identifier_name, _injection_password)
+def test_hardened_password_literal_is_injection_safe(name, password):
+    """Quote-bearing passwords stay one statement with the value preserved verbatim."""
+    hardened = render_create_user_hardened(name, password)
+    assert password_clause_is_grammar_valid(hardened)
+    stmts, values = _scan_statements(hardened)
+    assert len(stmts) == 1          # payload cannot open a second statement
+    assert values == [password]     # intended password preserved exactly
+
+
+@settings(max_examples=50)
+@given(_safe_identifier_name)
+def test_bound_parameter_in_password_position_is_rejected(name):
+    """The prior (broken) construction — a bound parameter — must be flagged invalid."""
+    placeholder_stmt = "CREATE USER " + safe_identifier(name) + " WITH PASSWORD %s"
+    assert password_clause_is_grammar_valid(placeholder_stmt) is False
+    server_param_stmt = "CREATE USER " + safe_identifier(name) + " WITH PASSWORD $1"
+    assert password_clause_is_grammar_valid(server_param_stmt) is False

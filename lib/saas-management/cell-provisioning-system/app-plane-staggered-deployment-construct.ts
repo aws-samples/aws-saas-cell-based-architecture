@@ -67,7 +67,10 @@ export class AppPlaneStaggeredDeploymentsConstruct extends Construct {
           CELL_MANAGEMENT_TABLE_NAME: props.cellManagementTable.tableName
         },
         initialPolicy: [lambdaPolicy],
-        logRetention: logs.RetentionDays.ONE_DAY,        
+        logGroup: new logs.LogGroup(this, 'PrepDeployLogGroup', {
+          retention: logs.RetentionDays.ONE_DAY,
+          removalPolicy: cdk.RemovalPolicy.DESTROY,
+        }),
       });
 
 

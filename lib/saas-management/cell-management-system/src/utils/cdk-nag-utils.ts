@@ -13,6 +13,10 @@ export class CdkNagUtils {
         reason: 'Advanced Security Mode is unnecessary for a workshop. User and account is shortlived.'
       },
       {
+        id: 'AwsSolutions-COG8',
+        reason: 'Cognito plus tier / feature plan (advanced security features) is unnecessary for a workshop. Users and accounts are shortlived, so malicious sign-in detection and unsafe-password protection are not warranted; remaining on the default tier preserves existing behavior and cost.'
+      },
+      {
         id: 'AwsSolutions-COG4',
         reason: 'Authorization cannot be used for OPTIONS as part of CORS'
       },

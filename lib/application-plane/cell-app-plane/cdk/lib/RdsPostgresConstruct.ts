@@ -78,8 +78,12 @@ import {
         }
 
         // Declaring postgres engine
+        // Aurora engine version resolved by the Aurora Engine Selector (CC5, Req 5.1-5.4):
+        // VER_15_10 -> VER_15_17. VER_15_17 was confirmed present in the target
+        // aws-cdk-lib AuroraPostgresEngineVersion enum (enum-presence check); remaining
+        // within major 15 keeps the tenant SQL scripts behavior-identical.
         let auroraEngine = rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_15_10,
+        version: rds.AuroraPostgresEngineVersion.VER_15_17,
         });
 
         let auroraParameters: any = {};

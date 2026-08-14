@@ -1,2 +1,2 @@
-psycopg[binary,pool]
-python-jose[cryptography]
+psycopg[binary,pool]==3.3.4
+PyJWT[crypto]==2.13.0

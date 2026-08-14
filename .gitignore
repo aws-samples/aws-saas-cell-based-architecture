@@ -391,3 +391,6 @@ tenant_id.txt
 out.txt
 
 !lib/application-plane/common-components/cell-router/src/functions/*.js
+
+.amazonq/
+.kiro/

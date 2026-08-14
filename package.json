@@ -18,7 +18,6 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/cdk.out/",
-      "/refresh-tooling/",
       "/Solution/",
       "/lib/application-plane/cell-app-plane/cdk/"
     ]
